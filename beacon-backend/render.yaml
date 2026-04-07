@@ -109,6 +109,7 @@ services:
     name: beacon-cache
     region: frankfurt
     plan: starter # Change to 'free' if you want a free tier redis
+    ipAllowList: [] # Blank array means only your Render Web/Worker apps can access it
 
 databases:
   # Managed PostgreSQL Database
