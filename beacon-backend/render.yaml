@@ -14,7 +14,7 @@ services:
       pip install -r requirements.txt
       python add_pgvector_extension.py
       flask db upgrade
-    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 4 --threads 2
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.12
@@ -37,8 +37,6 @@ services:
           type: redis
           name: beacon-cache
           property: connectionString
-      - key: CELERY_TASK_ALWAYS_EAGER
-        value: "true"
       - key: FLASK_DEBUG
         value: "0"
       - key: FLASK_APP
