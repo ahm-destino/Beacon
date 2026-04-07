@@ -37,6 +37,8 @@ services:
           type: redis
           name: beacon-cache
           property: connectionString
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "true"
       - key: FLASK_DEBUG
         value: "0"
       - key: FLASK_APP
