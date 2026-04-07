@@ -9,7 +9,7 @@ services:
     name: beacon-api
     env: python
     rootDir: beacon-backend
-    region: frankfurt
+    region: virginia
     plan: free # Strictly Free Tier
     buildCommand: |
       pip install -r requirements.txt
@@ -44,7 +44,7 @@ services:
   # 2. Managed Redis Cache (Free Tier)
   - type: redis
     name: beacon-cache
-    region: frankfurt
+    region: virginia
     plan: free # Strictly Free Tier
     ipAllowList: []
 
