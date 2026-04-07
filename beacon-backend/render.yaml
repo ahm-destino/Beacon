@@ -8,6 +8,7 @@ services:
   - type: web
     name: beacon-api
     env: python
+    rootDir: beacon-backend
     region: frankfurt
     plan: free # Strictly Free Tier
     buildCommand: |
