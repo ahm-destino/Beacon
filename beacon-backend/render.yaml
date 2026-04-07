@@ -104,18 +104,15 @@ services:
       - key: FLASK_APP
         value: "run.py"
 
+  # 4. Managed Redis
+  - type: redis
+    name: beacon-cache
+    region: frankfurt
+    plan: starter # Change to 'free' if you want a free tier redis
+
 databases:
   # Managed PostgreSQL Database
   - name: beacon-db
     region: frankfurt
     plan: starter # Change if you need more resources
-    postgresql:
-      # Optional: Explicitly configure Postgres
-      version: "15"
-
-  # Managed Redis (Requires standalone service type for old Render format, or embedded)
-  # Actually, Render recently updated blueprints. Redis is now natively supported as a datastore.
-  - type: redis
-    name: beacon-cache
-    region: frankfurt
-    plan: starter
+    version: "15"
