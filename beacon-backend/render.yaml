@@ -1,0 +1,121 @@
+# render.yaml
+# Render Blueprint to automatically deploy the Flask API, Celery Worker, PostgreSQL DB, Redis, and Cron Job.
+# Put this in the root of your beacon-backend repository.
+
+services:
+  # 1. Main Web API Service (Flask)
+  - type: web
+    name: beacon-api
+    env: python
+    region: frankfurt # Change to your preferred region (e.g. ohio, oregon)
+    buildCommand: |
+      pip install -r requirements.txt
+      flask db upgrade
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 4 --threads 2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: beacon-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: beacon-cache
+          property: connectionString
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: FLASK_APP
+        value: "run.py"
+      - key: GROQ_API_KEY
+        sync: false # You will need to paste this in the Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://your-frontend-url.vercel.app
+
+  # 2. Celery Background Worker
+  - type: worker
+    name: beacon-worker
+    env: python
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A celery_worker.celery worker --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: beacon-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: beacon-cache
+          property: connectionString
+      - key: FLASK_APP
+        value: "run.py"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: beacon-cache
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: beacon-cache
+          property: connectionString
+
+  # 3. Weekly League Rotation Cron Job (Runs Sundays at Midnight UTC)
+  - type: cron
+    name: beacon-league-rotation
+    env: python
+    region: frankfurt
+    schedule: "0 0 * * 0" # Every Sunday at Midnight UTC
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cron_league_rotation.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: beacon-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: beacon-cache
+          property: connectionString
+      - key: FLASK_APP
+        value: "run.py"
+
+databases:
+  # Managed PostgreSQL Database
+  - name: beacon-db
+    region: frankfurt
+    plan: starter # Change if you need more resources
+    postgresql:
+      # Optional: Explicitly configure Postgres
+      version: "15"
+
+  # Managed Redis (Requires standalone service type for old Render format, or embedded)
+  # Actually, Render recently updated blueprints. Redis is now natively supported as a datastore.
+  - type: redis
+    name: beacon-cache
+    region: frankfurt
+    plan: starter

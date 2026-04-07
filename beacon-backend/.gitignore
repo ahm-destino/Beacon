@@ -1,0 +1,45 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Database backups & large JSON files
+*.json.bak
+*.json.bak2
+beacon_enriched_questions.json
+
+# Migrations (optional - remove this if you want to track migrations)
+# migrations/
+
+# Uploaded files
+uploads/
+
+# Tests
+.pytest_cache/
+*.pytest_cache
+htmlcov/
+.coverage
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

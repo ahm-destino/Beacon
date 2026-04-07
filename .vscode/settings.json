@@ -1,0 +1,10 @@
+{
+  "python.defaultInterpreterPath": "beacon-backend/venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "./beacon-backend"
+  ],
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.nosetestsEnabled": false,
+  "python.analysis.typeCheckingMode": "basic"
+}
