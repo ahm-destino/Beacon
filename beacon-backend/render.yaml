@@ -115,4 +115,3 @@ databases:
   - name: beacon-db
     region: frankfurt
     plan: starter # Change if you need more resources
-    version: "15"
