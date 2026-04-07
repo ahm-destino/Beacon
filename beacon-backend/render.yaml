@@ -12,6 +12,7 @@ services:
     plan: free # Strictly Free Tier
     buildCommand: |
       pip install -r requirements.txt
+      python add_pgvector_extension.py
       flask db upgrade
     startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 4 --threads 2
     envVars:
