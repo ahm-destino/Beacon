@@ -5,13 +5,17 @@ export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    // Check initial theme
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme)').matches)) {
+    // Check initial theme - default to light unless dark is explicitly saved
+    if (localStorage.theme === 'dark') {
       setIsDark(true);
       document.documentElement.classList.add('dark');
     } else {
       setIsDark(false);
       document.documentElement.classList.remove('dark');
+      // If no theme is set, explicitly set it to light for future boots
+      if (!localStorage.theme) {
+        localStorage.theme = 'light';
+      }
     }
   }, []);
 

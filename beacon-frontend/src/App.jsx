@@ -714,10 +714,10 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
         <div className="relative z-10 max-w-3xl mx-auto text-center scroll-animate">
           <h2 className="font-[var(--font-syne)] text-4xl md:text-5xl font-bold text-white dark:text-sky-50 mb-4 leading-tight">
-            Your exam is coming.<br/>Are you ready?
+            Your exam date is getting closer every single day.<br/>Don't wait until it's too late.
           </h2>
           <p className="text-lg text-sky-200 max-w-xl mx-auto mb-10">
-            4,800+ students are studying smarter with Beacon right now. Join them before your exam date. It takes 3 minutes to get started.
+            The students securing their 300+ scores have already started practicing. Join them right now and guarantee your admission this year.
           </p>
           <Link to={getStartedPath} className="group inline-flex items-center gap-2 bg-white text-sky-800 hover:bg-sky-50 font-[var(--font-syne)] font-bold text-lg px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 focus:ring-4 focus:ring-white/30">
             {startStudyingLabel}
