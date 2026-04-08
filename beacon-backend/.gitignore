@@ -20,7 +20,6 @@ build/
 # Database backups & large JSON files
 *.json.bak
 *.json.bak2
-beacon_enriched_questions.json
 
 # Migrations (optional - remove this if you want to track migrations)
 # migrations/
