@@ -54,9 +54,11 @@ class Config:
     # Frontend
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
-    # Celery
-    CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-    CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    # Celery (Modern configuration for Celery 5.x+)
+    broker_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    result_backend = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    CELERY_BROKER_URL = broker_url
+    CELERY_RESULT_BACKEND = result_backend
     CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', 'False').lower() == 'true'
     
     # Scheduled Tasks

@@ -1,3 +1,4 @@
+import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -14,7 +15,10 @@ migrate = Migrate()
 jwt = JWTManager()
 bcrypt = Bcrypt()
 cors = CORS()
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=os.getenv('REDIS_URL', 'memory://')
+)
 celery = Celery(__name__)
 
 # Redis client (initialized in app factory)
