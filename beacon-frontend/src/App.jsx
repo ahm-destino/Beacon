@@ -801,7 +801,7 @@ export default function App() {
           </div>
           
           <div className="border-t border-sky-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-sky-500">© 2025 Beacon. All rights reserved.</p>
+            <p className="text-xs text-sky-500">© 2026 Beacon. All rights reserved.</p>
             <p className="text-xs text-sky-500">Developed by <a href="https://kingsleydestiny.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white underline underline-offset-2 transition-colors">Destiny Kingsley</a></p>
           </div>
         </div>
