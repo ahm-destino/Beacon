@@ -113,7 +113,7 @@ export default function App() {
             </h1>
             
             <p className="text-lg text-sky-700/80 dark:text-sky-300/80 max-w-md leading-relaxed mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
-              Throw away the overwhelming textbooks. Master your weak subjects with a personalized AI tutor that explains exactly what you don't understand, tracks your speed, and guarantees you hit 300+ safely in one sitting.
+              Throw away the overwhelming textbooks. Master your weak subjects for JAMB, WAEC, NECO, Post-UTME, and JUPEB with a personalized AI tutor that explains exactly what you don't understand, tracks your speed, and guarantees your success.
             </p>
             
             <div className="flex flex-wrap items-center gap-3 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
@@ -179,7 +179,7 @@ export default function App() {
 
                 {/* Question Preview */}
                 <div className="bg-white dark:bg-[#111D2E] border border-sky-100 dark:border-sky-900/30 rounded-2xl p-4">
-                  <p className="text-xs text-sky-800 dark:text-sky-200 mb-3 font-medium">In which organelle does cellular respiration occur?</p>
+                  <p className="text-xs text-sky-800 dark:text-sky-100 mb-3 font-medium">In which organelle does cellular respiration occur?</p>
                   <div className="flex flex-col gap-2">
                     <div className="bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 text-xs p-2.5 rounded-xl border border-sky-100 dark:border-sky-800/30">A. Nucleus</div>
                     <div className="bg-sky-600 text-white text-xs p-2.5 rounded-xl shadow-sm flex justify-between items-center">
@@ -230,7 +230,7 @@ export default function App() {
       {/* Problems Section */}
       <section className="py-20 px-5 max-w-7xl mx-auto">
         <div className="text-center mb-12 scroll-animate">
-          <h2 className="font-[var(--font-syne)] text-3xl font-bold mb-3">We know exactly how it feels.</h2>
+          <h2 className="font-[var(--font-syne)] text-3xl font-bold mb-3 text-sky-900 dark:text-sky-50">We know exactly how it feels.</h2>
           <p className="text-base text-sky-700/80 dark:text-sky-300/80 max-w-xl mx-auto">Preparing for exams in Nigeria carries too much pressure. We built Beacon to solve the silent fears every student goes through.</p>
         </div>
 
@@ -259,7 +259,7 @@ export default function App() {
               <div className={`w-12 h-12 rounded-xl ${card.color} flex items-center justify-center mb-5 text-2xl`}>
                 {card.icon}
               </div>
-              <h3 className="font-[var(--font-syne)] font-bold text-xl mb-3">{card.title}</h3>
+              <h3 className="font-[var(--font-syne)] font-bold text-xl mb-3 text-sky-900 dark:text-sky-50">{card.title}</h3>
               <p className="text-sm leading-relaxed text-sky-700/80 dark:text-sky-300/80">{card.desc}</p>
             </div>
           ))}
@@ -269,7 +269,7 @@ export default function App() {
       {/* Features Section */}
       <section id="features" className="py-24 px-5 max-w-6xl mx-auto">
         <div className="text-center mb-20 scroll-animate">
-          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4">Your unfair advantage for JAMB & WAEC</h2>
+          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4 text-sky-900 dark:text-sky-50">Your unfair advantage for JAMB & WAEC</h2>
           <p className="text-lg text-sky-700/80 dark:text-sky-300/80 max-w-2xl mx-auto">Everything you need to score 300+ and clear your papers in one sitting.</p>
         </div>
 
@@ -278,7 +278,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-animate">
             <div>
               <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Your Personal Guide</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A study plan that knows exactly what you don't know</h3>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4 text-sky-900 dark:text-sky-50">A study plan that knows exactly what you don't know</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
                 Beacon tracks your weak points every single day and tells you exactly what to study. Stop wasting time reading things you already know, and never guess what might come out in the exam again.
               </p>
@@ -293,7 +293,7 @@ export default function App() {
             </div>
             <div className="bg-white dark:bg-[#0D1525] rounded-2xl shadow-xl border border-sky-100 dark:border-sky-800/20 p-6">
               <div className="flex justify-between items-center mb-6">
-                <h4 className="font-bold">This Week's Plan</h4>
+                <h4 className="font-bold text-sky-900 dark:text-sky-50">This Week's Plan</h4>
                 <span className="text-xs text-sky-500">72% Complete</span>
               </div>
               <div className="space-y-4">
@@ -320,7 +320,7 @@ export default function App() {
                     </div>
                     <div className="w-10 text-xs font-bold text-sky-500">{row.day}</div>
                     <div className="flex-1">
-                      <div className="text-sm font-bold">{row.subject}</div>
+                      <div className="text-sm font-bold text-sky-900 dark:text-sky-50">{row.subject}</div>
                       <div className="text-xs text-sky-500">{row.topic}</div>
                     </div>
                   </div>
@@ -336,7 +336,7 @@ export default function App() {
                  <span className="text-xs font-bold text-sky-500">Question 42 of 50</span>
                  <span className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded">Medium</span>
                </div>
-               <p className="text-sm font-medium mb-6">Calculate the work done when a force of 20N moves a body through a distance of 5m in the direction of the force.</p>
+               <p className="text-sm font-medium mb-6 text-sky-900 dark:text-sky-50">Calculate the work done when a force of 20N moves a body through a distance of 5m in the direction of the force.</p>
                <div className="space-y-3 mb-6">
                  {['A. 100 J', 'B. 4 J', 'C. 25 J', 'D. 15 J'].map((opt, i) => (
                    <div
@@ -356,14 +356,14 @@ export default function App() {
                    <Play size={14} className="text-sky-700 dark:text-sky-300 ml-0.5" fill="currentColor" />
                  </div>
                  <div>
-                   <p className="text-xs font-bold text-sky-800 dark:text-sky-200 mb-1">Video Explanation</p>
+                   <p className="text-xs font-bold text-sky-800 dark:text-sky-50 mb-1">Video Explanation</p>
                    <p className="text-xs text-sky-600 dark:text-sky-400">Watch tutor explain the formula W = F × d</p>
                  </div>
                </div>
             </div>
             <div className="order-1 lg:order-2">
               <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">10,000+ Questions</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">Every real past question. Explained.</h3>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4 text-sky-900 dark:text-sky-50">Every real past question. Explained.</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
                 Practice the exact questions that have appeared on JAMB, WAEC, NECO and JUPEB from 1989 to 2024. Every single question has a step-by-step video explanation so you understand, not just memorize.
               </p>
@@ -382,7 +382,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-animate">
             <div>
               <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Stay Consistent</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">Studying that actually feels addictive</h3>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4 text-sky-900 dark:text-sky-50">Studying that actually feels addictive</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
                 It's hard to read when your friends are playing. Our fire streak tracks your daily hustle. Miss a day, and you lose your fire. Students who build a 30-day streak literally never fail their exams.
               </p>
@@ -447,7 +447,7 @@ export default function App() {
             </div>
             <div className="order-1 lg:order-2">
               <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Your Smartest Friend</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A tutor that actually speaks your language</h3>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4 text-sky-900 dark:text-sky-50">A tutor that actually speaks your language</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
                 Ask any question and get an explanation that uses Nigerian examples (like Egusi soup or Danfo buses). Available at 2 AM the night before your exam when no human lesson teacher is awake.
               </p>
@@ -466,7 +466,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-animate">
             <div>
               <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">AI Prediction</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">Know your JAMB score before the exam</h3>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4 text-sky-900 dark:text-sky-50">Know your JAMB score before the exam</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
                 Beacon's AI analyses your accuracy, speed, topic coverage and mock exam performance to predict your actual JAMB score. Updated daily. Students whose prediction hit 300+ all passed.
               </p>
@@ -515,7 +515,7 @@ export default function App() {
       <section id="how-it-works" className="py-20 px-5 bg-sky-50/50 dark:bg-[#0A101D]">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 scroll-animate">
-            <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4">Get started in 3 minutes</h2>
+            <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4 text-sky-900 dark:text-sky-50">Get started in 3 minutes</h2>
             <p className="text-lg text-sky-700/80 dark:text-sky-300/80">No textbooks. No confusion. Just results.</p>
           </div>
 
@@ -548,7 +548,7 @@ export default function App() {
                 {i < 2 && (
                   <div className="hidden md:block absolute top-7 left-[calc(50%+28px)] w-[calc(100%-56px)] h-0.5 bg-gradient-to-r from-sky-300 to-sky-300 dark:from-sky-800 dark:to-sky-800 z-0"></div>
                 )}
-                <h3 className="font-[var(--font-syne)] font-bold text-xl mt-4 mb-2">{step.title}</h3>
+                <h3 className="font-[var(--font-syne)] font-bold text-xl mt-4 mb-2 text-sky-900 dark:text-sky-50">{step.title}</h3>
                 <p className="text-sm text-sky-700/80 dark:text-sky-300/80 max-w-xs mx-auto">{step.desc}</p>
               </div>
             ))}
@@ -559,7 +559,7 @@ export default function App() {
       {/* Testimonials */}
       <section id="testimonials" className="py-20 px-5 max-w-7xl mx-auto">
         <div className="text-center mb-16 scroll-animate">
-          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4">Real students. Real results.</h2>
+          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4 text-sky-900 dark:text-sky-50">Real students. Real results.</h2>
           <p className="text-lg text-sky-700/80 dark:text-sky-300/80">These are actual Beacon students. Their scores speak for themselves.</p>
         </div>
 
@@ -602,7 +602,7 @@ export default function App() {
                   {t.initials}
                 </div>
                 <div>
-                  <h4 className="font-[var(--font-syne)] font-bold text-sm">{t.name}</h4>
+                  <h4 className="font-[var(--font-syne)] font-bold text-sm text-sky-900 dark:text-sky-50">{t.name}</h4>
                   <p className="text-xs text-sky-600 dark:text-sky-400">{t.meta}</p>
                 </div>
               </div>
@@ -614,7 +614,7 @@ export default function App() {
       {/* Pricing */}
       <section id="pricing" className="py-20 px-5 max-w-7xl mx-auto">
         <div className="text-center mb-12 scroll-animate">
-          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4">Simple pricing. Full value.</h2>
+          <h2 className="font-[var(--font-syne)] text-4xl font-bold mb-4 text-sky-900 dark:text-sky-50">Simple pricing. Full value.</h2>
           <p className="text-lg text-sky-700/80 dark:text-sky-300/80 mb-8">Less than one hour of private tuition. More than everything else combined.</p>
           
           <div className="inline-flex items-center p-1 rounded-full bg-sky-100 dark:bg-sky-900/30">
@@ -682,7 +682,7 @@ export default function App() {
                   Most Popular
                 </div>
               )}
-              <h3 className="font-[var(--font-syne)] font-bold text-lg mb-4">{tier.name}</h3>
+              <h3 className="font-[var(--font-syne)] font-bold text-lg mb-4 text-inherit">{tier.name}</h3>
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="font-['Plus_Jakarta_Sans'] text-3xl font-black">{tier.price}</span>
                 {tier.price !== "Free" && <span className="text-sm opacity-60">/month</span>}
@@ -714,10 +714,10 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
         <div className="relative z-10 max-w-3xl mx-auto text-center scroll-animate">
           <h2 className="font-[var(--font-syne)] text-4xl md:text-5xl font-bold text-white dark:text-sky-50 mb-4 leading-tight">
-            Your exam date is getting closer every single day.<br/>Don't wait until it's too late.
+            Your exam is coming.<br/>Are you ready?
           </h2>
           <p className="text-lg text-sky-200 max-w-xl mx-auto mb-10">
-            The students securing their 300+ scores have already started practicing. Join them right now and guarantee your admission this year.
+            4,800+ students are studying smarter with Beacon right now. Join them before your exam date. It takes 3 minutes to get started.
           </p>
           <Link to={getStartedPath} className="group inline-flex items-center gap-2 bg-white text-sky-800 hover:bg-sky-50 font-[var(--font-syne)] font-bold text-lg px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 focus:ring-4 focus:ring-white/30">
             {startStudyingLabel}
@@ -743,7 +743,7 @@ export default function App() {
               </div>
               <p className="text-sm text-sky-300 mb-2">Your path to exam success</p>
               <p className="text-xs text-sky-400 leading-relaxed max-w-xs mb-6">
-                Built specifically for Nigerian students preparing for JAMB, WAEC, NECO and JUPEB.
+                Built specifically for Nigerian students preparing for JAMB, WAEC, NECO, Post-UTME and JUPEB.
               </p>
               <div className="flex gap-3">
                 {[Twitter, Instagram, MessageCircle].map((Icon, i) => (
@@ -800,7 +800,7 @@ export default function App() {
           
           <div className="border-t border-sky-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-sky-500">© 2025 Beacon. All rights reserved.</p>
-            <p className="text-xs text-sky-500">Made with ❤️ for Nigerian students</p>
+            <p className="text-xs text-sky-500">Developed by <a href="https://kingsleydestiny.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white underline underline-offset-2 transition-colors">Destiny Kingsley</a></p>
           </div>
         </div>
       </footer>
