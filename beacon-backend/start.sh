@@ -7,5 +7,5 @@ celery -A celery_worker.celery worker --loglevel=info --concurrency=1 &
 
 echo "Starting Gunicorn web server..."
 # Start the Gunicorn web server in the foreground
-# Using 2 workers to keep memory usage low (Important for 512MB RAM constraints)
-gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --threads 2
+# Using 1 worker and 1 thread for absolute minimum memory footprint on 512MB RAM
+gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --threads 1
