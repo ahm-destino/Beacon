@@ -636,7 +636,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+        <div className="flex md:grid md:grid-cols-4 gap-6 overflow-x-auto md:overflow-x-visible pb-8 md:pb-0 snap-x snap-mandatory no-scrollbar items-stretch">
           {[
             {
               name: "SEEKER",
@@ -670,10 +670,10 @@ export default function App() {
           ].map((tier, i) => (
             <div
               key={i}
-              className={`relative rounded-2xl p-7 transition-all duration-300 scroll-animate ${
+              className={`relative rounded-2xl p-7 transition-all duration-300 scroll-animate shrink-0 w-[85%] md:w-auto snap-center flex flex-col ${
                 tier.popular
                   ? 'bg-sky-700 text-white shadow-[0_16px_40px_rgba(3,105,161,0.4)] dark:bg-sky-600 dark:shadow-[0_16px_40px_rgba(14,165,233,0.3)] z-10'
-                  : 'bg-white dark:bg-[#0D1525] border border-sky-100 dark:border-[rgba(14,165,233,0.12)]'
+                  : 'bg-white dark:bg-[#0D1525] border border-sky-100 dark:border-[rgba(14,165,233,0.12)] text-sky-900 dark:text-sky-50'
               }`}
               style={{ transitionDelay: `${i * 100}ms` }}
             >
@@ -682,28 +682,30 @@ export default function App() {
                   Most Popular
                 </div>
               )}
-              <h3 className="font-[var(--font-syne)] font-bold text-lg mb-4 text-inherit">{tier.name}</h3>
+              <h3 className="font-[var(--font-syne)] font-bold text-lg mb-4">{tier.name}</h3>
               <div className="mb-6 flex items-baseline gap-1">
                 <span className="font-['Plus_Jakarta_Sans'] text-3xl font-black">{tier.price}</span>
-                {tier.price !== "Free" && <span className="text-sm opacity-60">/month</span>}
+                {tier.price !== "Free" && <span className="text-sm opacity-70">/month</span>}
               </div>
               <ul className="space-y-3 mb-8">
                 {tier.features.map((f, j) => (
                   <li key={j} className="flex items-start gap-2 text-sm leading-relaxed">
                     <Check size={16} className={`shrink-0 mt-0.5 ${tier.popular ? 'text-sky-300' : 'text-green-500'}`} />
-                    <span>{f}</span>
+                    <span className={tier.popular ? 'text-sky-50' : 'text-sky-900/80 dark:text-sky-300'}>{f}</span>
                   </li>
                 ))}
                 {tier.missing && tier.missing.map((m, j) => (
                   <li key={`m${j}`} className="flex items-start gap-2 text-sm leading-relaxed opacity-50">
                     <X size={16} className="shrink-0 mt-0.5" />
-                    <span>{m}</span>
+                    <span className={tier.popular ? 'text-sky-50' : 'text-sky-900/80 dark:text-sky-300'}>{m}</span>
                   </li>
                 ))}
               </ul>
-              <button className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${tier.popular ? 'bg-white text-sky-800 hover:bg-sky-50' : tier.price === 'Free' ? 'bg-transparent border border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-900/30' : 'bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/50 dark:text-sky-200 dark:hover:bg-sky-800/50'}`}>
-                {tier.cta}
-              </button>
+              <div className="mt-auto">
+                <button className={`w-full py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${tier.popular ? 'bg-white text-sky-800 hover:bg-sky-50' : tier.price === 'Free' ? 'bg-transparent border border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-900/30' : 'bg-sky-100 text-sky-800 hover:bg-sky-200 dark:bg-sky-900/50 dark:text-sky-200 dark:hover:bg-sky-800/50'}`}>
+                  {tier.cta}
+                </button>
+              </div>
             </div>
           ))}
         </div>
