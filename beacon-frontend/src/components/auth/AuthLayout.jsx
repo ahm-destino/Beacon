@@ -5,7 +5,13 @@ import ThemeToggle from '../ThemeToggle';
 export default function AuthLayout({ children }) {
   return (
     <div className="min-h-screen flex w-full bg-[#F0F9FF] dark:bg-[#080C14]">
-      <div className="hidden md:flex flex-col justify-center w-[40%] min-h-screen sticky top-0 bg-gradient-to-br from-[#0C4A6E] via-[#0369A1] to-[#0284C7] dark:from-[#080C14] dark:via-[#0C1829] dark:to-[#0369A1] bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.15),transparent_50%)] px-10">
+      {/* Sidebar Panel (Left column) */}
+      <div className="hidden md:flex flex-col justify-center w-[40%] min-h-screen sticky top-0 overflow-hidden px-10">
+        {/* Background Layer */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0C4A6E] via-[#0369A1] to-[#0284C7] dark:from-[#080C14] dark:via-[#0C1829] dark:to-[#0C4A6E] z-0"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.15),transparent_50%)] z-0"></div>
+        
+        <div className="relative z-10 flex flex-col justify-center h-full">
         
         {/* TOP SECTION */}
         <div className="mb-12">
@@ -60,6 +66,7 @@ export default function AuthLayout({ children }) {
               <div className="text-xs text-sky-300">JAMB 2024 · Score: 318</div>
             </div>
           </div>
+        </div>
         </div>
       </div>
 

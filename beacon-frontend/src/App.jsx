@@ -104,7 +104,7 @@ export default function App() {
           <div className="flex flex-col justify-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800/50 w-fit mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span className="text-xs font-bold">BEACON &bull; The smartest way to prepare for your exam</span>
+              <span className="text-xs font-bold">Stop fearing the exam. Start owning it.</span>
             </div>
             
             <h1 className="font-[var(--font-syne)] font-bold text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-sky-900 dark:text-sky-50 mb-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 fill-mode-both">
@@ -112,24 +112,9 @@ export default function App() {
               <span className="text-sky-500 dark:text-sky-400">Secure your admission now.</span>
             </h1>
             
-            <p className="text-lg text-sky-800/90 dark:text-sky-300/80 max-w-md leading-relaxed mb-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
-              Join 4,800+ Nigerian students who are studying smarter, scoring higher, and passing with confidence. 
+            <p className="text-lg text-sky-700/80 dark:text-sky-300/80 max-w-md leading-relaxed mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
+              Throw away the overwhelming textbooks. Master your weak subjects for JAMB, WAEC, NECO, Post-UTME, and JUPEB with a personalized AI tutor that explains exactly what you don't understand, tracks your speed, and guarantees your success.
             </p>
-            
-            <ul className="space-y-3 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-250 fill-mode-both">
-              {[
-                "10,000+ real past exam questions",
-                "AI tutor available 24/7",
-                "Personalized study plan built for you"
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm font-medium text-sky-800 dark:text-sky-200">
-                  <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                    <Check size={12} className="text-green-600 dark:text-green-400" />
-                  </div>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
             
             <div className="flex flex-wrap items-center gap-3 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
               <Link to={getStartedPath} className="group flex items-center gap-2 font-[var(--font-syne)] font-bold text-base px-7 py-3.5 rounded-xl bg-sky-700 text-white hover:bg-sky-600 shadow-[0_8px_24px_rgba(3,105,161,0.35)] hover:shadow-[0_12px_32px_rgba(3,105,161,0.45)] dark:bg-sky-500 dark:hover:bg-sky-400 dark:shadow-[0_8px_24px_rgba(14,165,233,0.30)] transition-all duration-200 active:scale-95 focus:ring-2 focus:ring-sky-500/50">
@@ -581,10 +566,10 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             {
-              quote: "Beacon took me from 240 to 318 in 4 months. The AI tutor explained things my school teacher never could. Worth every naira.",
-              name: "Chukwuemeka O.",
-              meta: "Lagos | JAMB 2024 | Score: 318",
-              badge: "JAMB 318 ✓",
+              quote: "Beacon's AI tutor explained organic chemistry in a way my teacher never could. Went from failing to A1 in 8 weeks. I still can't believe it.",
+              name: "Chioma Okafor",
+              meta: "Lagos | WAEC 2024 | Score: A1",
+              badge: "WAEC A1 ✓",
               initials: "CO"
             },
             {
