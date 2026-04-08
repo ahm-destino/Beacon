@@ -104,16 +104,16 @@ export default function App() {
           <div className="flex flex-col justify-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800/50 w-fit mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span className="text-xs font-bold">Nigeria's #1 AI Exam Prep</span>
+              <span className="text-xs font-bold">Stop fearing the exam. Start owning it.</span>
             </div>
             
             <h1 className="font-[var(--font-syne)] font-bold text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-sky-900 dark:text-sky-50 mb-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100 fill-mode-both">
-              Smash Your JAMB.<br/>
-              <span className="text-sky-500 dark:text-sky-400">First Attempt.</span>
+              Don't sit at home next year.<br/>
+              <span className="text-sky-500 dark:text-sky-400">Secure your admission now.</span>
             </h1>
             
             <p className="text-lg text-sky-700/80 dark:text-sky-300/80 max-w-md leading-relaxed mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 fill-mode-both">
-              Stop cramming. Master every topic with AI-generated mock exams, 15 years of real past questions, and instant step-by-step explanations.
+              Throw away the overwhelming textbooks. Master your weak subjects with a personalized AI tutor that explains exactly what you don't understand, tracks your speed, and guarantees you hit 300+ safely in one sitting.
             </p>
             
             <div className="flex flex-wrap items-center gap-3 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
@@ -230,29 +230,29 @@ export default function App() {
       {/* Problems Section */}
       <section className="py-20 px-5 max-w-7xl mx-auto">
         <div className="text-center mb-12 scroll-animate">
-          <h2 className="font-[var(--font-syne)] text-3xl font-bold mb-3">Sound familiar?</h2>
-          <p className="text-base text-sky-700/80 dark:text-sky-300/80 max-w-xl mx-auto">Tired of reading without understanding? Beacon fixes the real reasons you're struggling.</p>
+          <h2 className="font-[var(--font-syne)] text-3xl font-bold mb-3">We know exactly how it feels.</h2>
+          <p className="text-base text-sky-700/80 dark:text-sky-300/80 max-w-xl mx-auto">Preparing for exams in Nigeria carries too much pressure. We built Beacon to solve the silent fears every student goes through.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             {
-              icon: "🧭",
+              icon: "📚",
               color: "bg-sky-100 dark:bg-sky-900/30",
-              title: "Overwhelmed by the syllabus",
-              desc: "You have the textbooks, but no idea where to start. You end up reading random topics instead of what actually comes out in the exam."
+              title: "Drowning in textbooks",
+              desc: "The syllabus is massive, time is running out, and staring at giant textbooks just gives you a headache. You need a straight line to exactly what will come out in the exam."
             },
             {
-              icon: "📊",
+              icon: "🧠",
               color: "bg-orange-100 dark:bg-orange-900/30",
-              title: "Reading without retaining",
-              desc: "You spend hours reading, but when you see the past questions, your mind goes blank. You're memorizing, not understanding."
+              title: "Cramming but forgetting",
+              desc: "You spend hours reading, but the moment you face the CBT test, your mind goes completely blank. You're trying to force it into memory, instead of truly understanding."
             },
             {
-              icon: "👤",
+              icon: "⏳",
               color: "bg-teal-100 dark:bg-teal-900/30",
-              title: "Zero motivation to study",
-              desc: "It's hard to stay consistent when you're studying alone. You need that extra push and accountability when you feel like giving up."
+              title: "The terrifying fear of rewriting",
+              desc: "Watching your friends pack for university while you stay back home for another year is the worst feeling. You just want to make your parents proud on your first try."
             }
           ].map((card, i) => (
             <div key={i} className="bg-white dark:bg-[#0D1525] border border-sky-100 dark:border-[rgba(14,165,233,0.12)] rounded-2xl p-6 shadow-[0_4px_20px_rgba(14,165,233,0.08)] hover:shadow-[0_8px_32px_rgba(14,165,233,0.15)] hover:border-sky-200 dark:hover:border-[rgba(14,165,233,0.25)] transition-all duration-300 hover:-translate-y-1 scroll-animate" style={{ transitionDelay: `${i * 100}ms` }}>
@@ -277,10 +277,10 @@ export default function App() {
           {/* Feature 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-animate">
             <div>
-              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">AI-Powered</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A study plan that learns as you learn</h3>
+              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Your Personal Guide</div>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A study plan that knows exactly what you don't know</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
-                Beacon's AI analyzes your performance daily and rebuilds your study plan around your weak areas. It knows what you need to study TODAY — not what a generic schedule says.
+                Beacon tracks your weak points every single day and tells you exactly what to study. Stop wasting time reading things you already know, and never guess what might come out in the exam again.
               </p>
               <ul className="space-y-3">
                 {['Updates every day based on your progress', 'Prioritizes topics most likely on your exam', 'Adjusts when you fall behind or surge ahead'].map((item, i) => (
@@ -381,10 +381,10 @@ export default function App() {
           {/* Feature 3 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-animate">
             <div>
-              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Gamification</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">The system that makes studying addictive</h3>
+              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Stay Consistent</div>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">Studying that actually feels addictive</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
-                Beacon's streak system uses the same psychology that makes Duolingo users come back every day. Miss one day and your streak resets. Students with 30+ day streaks score 52 points higher on average.
+                It's hard to read when your friends are playing. Our fire streak tracks your daily hustle. Miss a day, and you lose your fire. Students who build a 30-day streak literally never fail their exams.
               </p>
               <ul className="space-y-3">
                 {['Daily streak with fire animation', 'Milestone badges at 7, 14, 30, 60, 100 days', 'Friend leaderboards for competition'].map((item, i) => (
@@ -446,10 +446,10 @@ export default function App() {
                </div>
             </div>
             <div className="order-1 lg:order-2">
-              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">24/7 AI Tutor</div>
-              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A tutor that explains at your level</h3>
+              <div className="inline-block px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 text-xs font-bold mb-4">Your Smartest Friend</div>
+              <h3 className="font-[var(--font-syne)] text-3xl font-bold mb-4">A tutor that actually speaks your language</h3>
               <p className="text-base leading-relaxed text-sky-700/80 dark:text-sky-300/80 max-w-md mb-6">
-                Ask anything. Get explained in 3 different levels — Basic, Normal, or Deep. Uses Nigerian examples and context. Available at midnight before your exam when no human tutor is awake.
+                Ask any question and get an explanation that uses Nigerian examples (like Egusi soup or Danfo buses). Available at 2 AM the night before your exam when no human lesson teacher is awake.
               </p>
               <ul className="space-y-3">
                 {['3 explanation levels you control', 'Nigerian analogies (egusi soup, NEPA, danfo)', 'Photo scan — point camera at any question'].map((item, i) => (
@@ -714,10 +714,10 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
         <div className="relative z-10 max-w-3xl mx-auto text-center scroll-animate">
           <h2 className="font-[var(--font-syne)] text-4xl md:text-5xl font-bold text-white dark:text-sky-50 mb-4 leading-tight">
-            Your exam is coming.<br/>Are you ready?
+            Your exam date is getting closer every single day.<br/>Don't wait until it's too late.
           </h2>
           <p className="text-lg text-sky-200 max-w-xl mx-auto mb-10">
-            4,800+ students are studying smarter with Beacon right now. Join them before your exam date. It takes 3 minutes to get started.
+            The students securing their 300+ scores have already started practicing. Join them right now and guarantee your admission this year.
           </p>
           <Link to={getStartedPath} className="group inline-flex items-center gap-2 bg-white text-sky-800 hover:bg-sky-50 font-[var(--font-syne)] font-bold text-lg px-10 py-4 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-0.5 active:scale-95 focus:ring-4 focus:ring-white/30">
             {startStudyingLabel}
