@@ -15,6 +15,7 @@ services:
       pip install -r requirements.txt
       python add_pgvector_extension.py
       flask db upgrade
+      python seed_from_json.py
     startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION

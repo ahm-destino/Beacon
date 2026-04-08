@@ -21,7 +21,8 @@ def seed_from_json():
         # Determine current DB count to avoid duplicate massive imports
         existing_count = Question.query.count()
         if existing_count > 0:
-            print(f"Warning: Database already contains {existing_count} questions.")
+            print(f"Database already contains {existing_count} questions. Skipping seed to prevent duplicates.")
+            return
             
         batch_size = 500
         count = 0
