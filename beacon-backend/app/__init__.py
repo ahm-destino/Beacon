@@ -12,6 +12,10 @@ def create_app(config_name=None):
     config_name = config_name or os.getenv('FLASK_ENV', 'development')
     app.config.from_object(config.get(config_name, config['default']))
 
+    # Handle proxy headers (Crucial for Render/Load Balancers)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
