@@ -19,9 +19,11 @@ def create_app(config_name=None):
     bcrypt.init_app(app)
     cors.init_app(app, 
                   origins=app.config['CORS_ORIGINS'], 
-                  supports_credentials=True,
-                  allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
-                  methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
+                  supports_credentials=True)
+    
+    # Debug CORS settings in logs
+    print(f"\n[CORS] Allowed Origins: {app.config['CORS_ORIGINS']}\n")
+    
     limiter.init_app(app)
     init_redis(app)
 

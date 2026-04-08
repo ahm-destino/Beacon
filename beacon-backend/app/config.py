@@ -26,7 +26,15 @@ class Config:
     RATELIMIT_DEFAULT = '200 per day;50 per hour'
 
     # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://beacon-beta-five.vercel.app,https://beacon-ex.vercel.app').split(',')
+    _env_cors = os.getenv('CORS_ORIGINS', '').split(',')
+    _default_cors = [
+        'http://localhost:5173', 
+        'http://localhost:3000', 
+        'https://beacon-beta-five.vercel.app', 
+        'https://beacon-ex.vercel.app'
+    ]
+    # Merge and clean (remove empty strings and whitespace)
+    CORS_ORIGINS = list(set([o.strip() for o in _env_cors if o.strip()] + _default_cors))
 
     # AI
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
