@@ -305,6 +305,10 @@ def reprocess_document(doc_id):
 def delete_document(doc_id):
     uid = get_uid()
     doc = Document.query.filter_by(id=doc_id, user_id=uid).first_or_404()
+    
+    # Also delete from Cloudinary
+    CloudinaryService.delete_document(str(doc.id))
+    
     db.session.delete(doc)
     db.session.commit()
     return success_response(message='Document deleted')
