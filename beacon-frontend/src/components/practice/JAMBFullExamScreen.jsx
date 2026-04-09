@@ -4,6 +4,7 @@ import { Clock, Flag, ArrowRight, Calculator } from 'lucide-react';
 import { Practice, STREAK_MILESTONE_POINTS } from '../../services/api';
 import QuestionTextFormatter from '../shared/QuestionTextFormatter';
 import JambCalculator from '../shared/JambCalculator';
+import { toast } from 'sonner';
 
 const JAMB_FULL_SECONDS = 120 * 60; // 7200
 
@@ -23,7 +24,18 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+const isValidBackendQuestion = (q) => {
+  if (!q) return false;
+  const text = (q.question_text || '').trim();
+  const options = [q.option_a, q.option_b, q.option_c, q.option_d].map(o => (o ?? '').toString().trim());
+  if (!text || options.some(o => !o)) return false;
+  const normalized = options.map(o => o.toLowerCase());
+  if (new Set(normalized).size < 4) return false;
+  return true;
+};
+
 function normalizeQuestion(q) {
+  if (!isValidBackendQuestion(q)) return null;
   const originalOptions = [
     { original: 'A', text: q.option_a },
     { original: 'B', text: q.option_b },
@@ -77,11 +89,20 @@ export default function JAMBFullExamScreen() {
       try {
         const res = await Practice.createJambFullSession();
         const payload = res?.data || {};
-        const nextSections = (payload.sections || []).map((s) => ({
-          subject: s.subject,
-          questions: (s.questions || []).map(normalizeQuestion),
-        }));
+        let skipped = 0;
+        const nextSections = (payload.sections || []).map((s) => {
+          const normalized = (s.questions || []).map(normalizeQuestion).filter(Boolean);
+          skipped += (s.questions || []).length - normalized.length;
+          return {
+            subject: s.subject,
+            questions: normalized,
+          };
+        });
         const nextFlat = nextSections.flatMap((s) => s.questions);
+
+        if (skipped > 0) {
+          toast.error(`${skipped} question${skipped > 1 ? 's' : ''} skipped due to data issues.`);
+        }
 
         if (!mounted) return;
 
@@ -199,12 +220,25 @@ export default function JAMBFullExamScreen() {
   const submitAnswer = async (questionId, selectedLetter) => {
     if (!session) return;
     try {
-      await Practice.submitAnswer(session.id, {
+      const res = await Practice.submitAnswer(session.id, {
         question_id: questionId,
         selected_option: selectedLetter,
         is_flagged: !!flaggedById[questionId],
         time_spent: 0,
       });
+      const serverCorrect = res?.data?.correct_answer;
+      const serverExplanation = res?.data?.explanation;
+      if (serverCorrect) {
+        setFlatQuestions(prev => prev.map(q => (
+          q.id === questionId ? { ...q, correctAnswer: serverCorrect, explanation: serverExplanation || q.explanation } : q
+        )));
+        setSections(prev => prev.map(sec => ({
+          ...sec,
+          questions: sec.questions.map(q => (
+            q.id === questionId ? { ...q, correctAnswer: serverCorrect, explanation: serverExplanation || q.explanation } : q
+          )),
+        })));
+      }
     } catch (_) {
       // best effort
     }

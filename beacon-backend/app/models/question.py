@@ -126,3 +126,26 @@ class QuestionOptionExplanation(db.Model):
             'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class QuestionAnswerVerification(db.Model):
+    __tablename__ = 'question_answer_verifications'
+
+    id                = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    question_id       = db.Column(UUID(as_uuid=True), db.ForeignKey('questions.id'), nullable=False, index=True)
+    options_hash      = db.Column(db.String(64), nullable=False, index=True)
+    ai_correct_answer = db.Column(db.String(1), nullable=False)
+    confidence        = db.Column(db.Float)
+    explanation_text  = db.Column(db.Text)
+    model_name        = db.Column(db.String(100))
+    created_by        = db.Column(db.String(20), default='ai')
+    use_count         = db.Column(db.Integer, default=0)
+    last_used_at      = db.Column(db.DateTime)
+    created_at        = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'question_id', 'options_hash',
+            name='uq_question_answer_verifications'
+        ),
+    )

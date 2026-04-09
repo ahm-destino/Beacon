@@ -3,6 +3,7 @@ import json
 import time
 import random
 import threading
+import requests
 from datetime import datetime
 from groq import Groq
 from ..extensions import db
@@ -33,14 +34,13 @@ class AIService:
 
     _client = None
 
-    # Default Groq model rotation list (based on current Groq Supported Models page).
+    # Default Groq model rotation list (fallback if model API fetch fails).
     # Order is tuned for fast/cheap real-time responses first.
     GROQ_DEFAULT_MODELS = [
         'llama-3.1-8b-instant',
-        'openai/gpt-oss-20b',
-        'qwen/qwen3-32b',
         'llama-3.3-70b-versatile',
-        'openai/gpt-oss-120b',
+        'gemma2-9b-it',
+        'mixtral-8x7b-32768',
     ]
 
     GROQ_PREVIEW_MODELS = [
@@ -67,6 +67,24 @@ class AIService:
     _groq_model_cache = {'models': None, 'fetched_at': 0.0}
     _groq_model_cooldowns = {}
     _groq_model_lock = threading.Lock()
+
+    GEMINI_DEFAULT_MODELS = [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+    ]
+
+    GEMINI_KEY_COOLDOWN_SECS = int(os.getenv('GEMINI_KEY_COOLDOWN_SECS', '30'))
+    GEMINI_MODEL_COOLDOWN_SECS = int(os.getenv('GEMINI_MODEL_COOLDOWN_SECS', '30'))
+    GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS = int(os.getenv('GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS', '300'))
+    GEMINI_TIMEOUT_SECS = int(os.getenv('GEMINI_TIMEOUT_SECS', '30'))
+
+    _gemini_key_idx = 0
+    _gemini_model_idx = 0
+    _gemini_key_lock = threading.Lock()
+    _gemini_model_lock = threading.Lock()
+    _gemini_key_cooldowns = {}
+    _gemini_model_cooldowns = {}
 
     @classmethod
     def get_client(cls):
@@ -126,7 +144,7 @@ class AIService:
             models = [m.strip() for m in override.split(',') if m.strip()]
             return [m for m in models if not cls._should_exclude_model(m)]
 
-        source = os.getenv('GROQ_MODEL_SOURCE', '').strip().lower()
+        source = os.getenv('GROQ_MODEL_SOURCE', 'api').strip().lower()
         if source == 'api':
             api_models = cls._fetch_groq_models_from_api()
             if api_models:
@@ -198,6 +216,145 @@ class AIService:
                 raise e # fatal api key error
                     
         raise Exception(f"All Groq fallback models rate limited or unavailable. Last error: {last_exception}")
+
+    @classmethod
+    def _get_gemini_keys(cls):
+        raw = os.getenv('GEMINI_API_KEYS') or os.getenv('GEMINI_API_KEY') or ''
+        keys = [k.strip() for k in raw.split(',') if k.strip()]
+        return keys
+
+    @classmethod
+    def _get_gemini_models(cls):
+        override = os.getenv('GEMINI_MODELS')
+        if override:
+            models = [m.strip() for m in override.split(',') if m.strip()]
+            return models
+        return cls.GEMINI_DEFAULT_MODELS
+
+    @classmethod
+    def _cooldown_gemini_key(cls, key: str):
+        jitter = random.uniform(0, 2.0)
+        with cls._gemini_key_lock:
+            cls._gemini_key_cooldowns[key] = time.time() + cls.GEMINI_KEY_COOLDOWN_SECS + jitter
+
+    @classmethod
+    def _cooldown_gemini_model(cls, model: str, seconds: int):
+        jitter = random.uniform(0, 2.0)
+        with cls._gemini_model_lock:
+            cls._gemini_model_cooldowns[model] = time.time() + max(1, seconds) + jitter
+
+    @classmethod
+    def _is_gemini_key_cooled(cls, key: str) -> bool:
+        with cls._gemini_key_lock:
+            until = cls._gemini_key_cooldowns.get(key, 0)
+        return time.time() < until
+
+    @classmethod
+    def _is_gemini_model_cooled(cls, model: str) -> bool:
+        with cls._gemini_model_lock:
+            until = cls._gemini_model_cooldowns.get(model, 0)
+        return time.time() < until
+
+    @classmethod
+    def _next_gemini_key(cls, keys):
+        with cls._gemini_key_lock:
+            if not keys:
+                return None
+            key = keys[cls._gemini_key_idx % len(keys)]
+            cls._gemini_key_idx = (cls._gemini_key_idx + 1) % len(keys)
+            return key
+
+    @classmethod
+    def _next_gemini_model(cls, models):
+        with cls._gemini_model_lock:
+            if not models:
+                return None
+            model = models[cls._gemini_model_idx % len(models)]
+            cls._gemini_model_idx = (cls._gemini_model_idx + 1) % len(models)
+            return model
+
+    @classmethod
+    def _build_gemini_payload(cls, messages, temperature=0.2, max_tokens=700, use_search=False):
+        system_parts = []
+        contents = []
+        for msg in messages:
+            role = msg.get('role', 'user')
+            text = msg.get('content', '')
+            if not text:
+                continue
+            if role == 'system':
+                system_parts.append({'text': text})
+            elif role == 'assistant':
+                contents.append({'role': 'model', 'parts': [{'text': text}]})
+            else:
+                contents.append({'role': 'user', 'parts': [{'text': text}]})
+
+        payload = {
+            'contents': contents,
+            'generationConfig': {
+                'temperature': temperature,
+                'maxOutputTokens': max_tokens,
+            }
+        }
+        if system_parts:
+            payload['systemInstruction'] = {'parts': system_parts}
+        if use_search:
+            payload['tools'] = [{'google_search': {}}]
+        return payload
+
+    @classmethod
+    def execute_gemini_with_fallback(cls, messages, max_tokens=700, temperature=0.2, use_search=False):
+        keys = cls._get_gemini_keys()
+        models = cls._get_gemini_models()
+        if not keys:
+            raise ValueError('GEMINI_API_KEY(S) not set.')
+
+        attempts = len(keys) * max(1, len(models))
+        last_error = None
+        for _ in range(attempts):
+            key = cls._next_gemini_key(keys)
+            model = cls._next_gemini_model(models)
+            if not key or not model:
+                break
+            if cls._is_gemini_key_cooled(key) or cls._is_gemini_model_cooled(model):
+                continue
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            payload = cls._build_gemini_payload(messages, temperature=temperature, max_tokens=max_tokens, use_search=use_search)
+            headers = {
+                'x-goog-api-key': key,
+                'Content-Type': 'application/json',
+            }
+            try:
+                resp = requests.post(url, headers=headers, json=payload, timeout=cls.GEMINI_TIMEOUT_SECS)
+            except Exception as e:
+                last_error = e
+                cls._cooldown_gemini_key(key)
+                continue
+
+            if resp.status_code == 200:
+                return resp.json()
+
+            last_error = resp
+            try:
+                err_json = resp.json()
+            except Exception:
+                err_json = {}
+
+            err_status = resp.status_code
+            err_msg = json.dumps(err_json).lower()
+
+            if err_status in (429, 503) or 'resource_exhausted' in err_msg:
+                cls._cooldown_gemini_key(key)
+                cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)
+                continue
+            if err_status == 404 or 'not found' in err_msg:
+                cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS)
+                continue
+            if err_status in (401, 403):
+                raise Exception(f"Gemini auth error: {resp.text}")
+
+        raise Exception(f"All Gemini models/keys failed. Last error: {last_error}")
 
     @classmethod
     def chat(cls, conversation_id, user_message, explanation_level, user_context, rag_context=None):
@@ -724,6 +881,89 @@ Return exactly valid JSON matching this structure:
         except Exception:
             return None
         return None
+
+    @classmethod
+    def verify_correct_answer(cls, question):
+        """Ask Groq to determine the correct option for a question."""
+        provider = os.getenv('AI_ANSWER_PROVIDER', 'groq').strip().lower()
+        use_search = os.getenv('GEMINI_USE_SEARCH', '').strip().lower() in ['1', 'true', 'yes']
+
+        prompt = f"""You are verifying a multiple-choice question.
+Return ONLY valid JSON with keys: correct_answer, confidence, brief_explanation.
+
+Question: {question.question_text}
+Options:
+A) {question.option_a}
+B) {question.option_b}
+C) {question.option_c}
+D) {question.option_d}
+
+Rules:
+- correct_answer must be exactly one of: A, B, C, D
+- confidence must be a number between 0 and 1
+- brief_explanation should be 1-2 sentences
+"""
+        try:
+            if provider == 'gemini':
+                response_json = cls.execute_gemini_with_fallback(
+                    messages=[{'role': 'user', 'content': prompt}],
+                    max_tokens=700,
+                    temperature=0.2,
+                    use_search=use_search,
+                )
+                candidates = response_json.get('candidates') if isinstance(response_json, dict) else None
+                if candidates and candidates[0].get('content', {}).get('parts'):
+                    text = candidates[0]['content']['parts'][0].get('text', '')
+                    model_name = response_json.get('model') or response_json.get('modelName')
+                else:
+                    text = ''
+                    model_name = None
+            else:
+                response = cls.execute_groq_with_fallback(
+                    messages=[{'role': 'user', 'content': prompt}],
+                    stream=False,
+                    max_tokens=700,
+                    temperature=0.2,
+                )
+                text = response.choices[0].message.content if response and response.choices else ''
+                model_name = getattr(response, 'model', None)
+            if not text:
+                return None
+
+            if '```json' in text:
+                text = text.split('```json')[1].split('```')[0].strip()
+            elif '```' in text:
+                text = text.split('```')[1].split('```')[0].strip()
+            text = text.strip()
+
+            import re
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                match = re.search(r'(\{).*(\})', text, re.DOTALL)
+                if not match:
+                    return None
+                payload = json.loads(match.group(0))
+
+            correct = (payload.get('correct_answer') or '').strip().upper()
+            if correct not in ['A', 'B', 'C', 'D']:
+                return None
+
+            confidence = payload.get('confidence')
+            try:
+                confidence = float(confidence) if confidence is not None else None
+            except Exception:
+                confidence = None
+
+            explanation = (payload.get('brief_explanation') or '').strip()
+            return {
+                'correct_answer': correct,
+                'confidence': confidence,
+                'explanation': explanation,
+                'model_name': model_name,
+            }
+        except Exception:
+            return None
 
     @classmethod
     def _generate_structured_content_hf(cls, prompt):

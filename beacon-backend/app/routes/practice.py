@@ -3,10 +3,18 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta, date
 import hashlib
 import json
+import os
 from sqlalchemy.exc import IntegrityError
 from ..extensions import db
-from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User, QuestionOptionExplanation
+from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User, QuestionOptionExplanation, QuestionAnswerVerification
 from ..utils.helpers import success_response, error_response, paginate_query
+from ..utils.question_validation import (
+    is_question_valid,
+    is_question_structurally_valid,
+    quarantine_questions,
+    build_answer_line,
+    build_options_only_hash,
+)
 from ..services.ai_service import AIService
 
 practice_bp = Blueprint('practice', __name__)
@@ -48,6 +56,108 @@ def _fallback_option_explanation(question: Question, selected_option: str) -> st
     )
 
 
+def _strip_answer_lines(text: str) -> str:
+    if not text:
+        return ''
+    lines = [line for line in text.splitlines() if not line.strip().lower().startswith('answer:')]
+    return '\n'.join(lines).rstrip()
+
+
+def _fetch_valid_questions(query, target_count, max_rounds=3):
+    """Fetch valid questions from a query, skipping corrupted items."""
+    selected = []
+    invalid = []
+    seen_ids = set()
+    aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
+    validator = is_question_structurally_valid if aggressive else is_question_valid
+
+    for _ in range(max_rounds):
+        remaining = target_count - len(selected)
+        if remaining <= 0:
+            break
+
+        q = query
+        if seen_ids:
+            q = q.filter(~Question.id.in_(seen_ids))
+
+        batch = q.order_by(db.func.random()).limit(remaining * 3).all()
+        if not batch:
+            break
+
+        for item in batch:
+            seen_ids.add(item.id)
+            if validator(item):
+                selected.append(item)
+            else:
+                invalid.append(item)
+
+    if invalid:
+        quarantine_questions(invalid, reason='invalid_question')
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    return selected
+
+
+def _resolve_correct_answer_with_ai(question: Question):
+    """Aggressive mode: use AI to choose correct answer and update DB immediately."""
+    options_hash = build_options_only_hash(question)
+    existing = QuestionAnswerVerification.query.filter_by(
+        question_id=question.id,
+        options_hash=options_hash,
+    ).first()
+
+    if existing:
+        existing.use_count = (existing.use_count or 0) + 1
+        existing.last_used_at = datetime.utcnow()
+        return {
+            'correct_answer': existing.ai_correct_answer,
+            'confidence': existing.confidence,
+            'explanation': existing.explanation_text,
+            'model_name': existing.model_name,
+            'cached': True,
+        }
+
+    result = AIService.verify_correct_answer(question)
+    if not result:
+        return None
+
+    record = QuestionAnswerVerification(
+        question_id=question.id,
+        options_hash=options_hash,
+        ai_correct_answer=result.get('correct_answer'),
+        confidence=result.get('confidence'),
+        explanation_text=result.get('explanation'),
+        model_name=result.get('model_name'),
+        created_by='ai',
+        use_count=1,
+        last_used_at=datetime.utcnow(),
+    )
+    db.session.add(record)
+    try:
+        db.session.flush()
+    except IntegrityError:
+        db.session.rollback()
+        existing = QuestionAnswerVerification.query.filter_by(
+            question_id=question.id,
+            options_hash=options_hash,
+        ).first()
+        if existing:
+            return {
+                'correct_answer': existing.ai_correct_answer,
+                'confidence': existing.confidence,
+                'explanation': existing.explanation_text,
+                'model_name': existing.model_name,
+                'cached': True,
+            }
+    return {
+        **result,
+        'cached': False,
+    }
+
+
 @practice_bp.route('/sessions/jamb-full', methods=['POST'])
 @jwt_required()
 def create_jamb_full_session():
@@ -80,21 +190,25 @@ def create_jamb_full_session():
         other_subjects[2]: 40,
     }
 
+    allow_realtime_gen = os.getenv('ALLOW_REALTIME_HF_GENERATION', '0').strip().lower() in ['1', 'true', 'yes']
+
     def fetch_questions_for_subject(subject_name: str, target_count: int):
         q_query = Question.query.filter_by(
             exam_type='JAMB',
             subject=subject_name,
             is_active=True,
             is_approved=True,
-        ).order_by(db.func.random())
+        )
 
-        qs = q_query.limit(target_count).all()
+        qs = _fetch_valid_questions(q_query, target_count)
         if len(qs) >= target_count:
             return qs
 
+        if not allow_realtime_gen:
+            return None
+
         gap = target_count - len(qs)
-        # Generate additional questions if the DB is short.
-        # Topic is not strictly enforced in the prompt; we use a generic topic.
+        # Optional realtime generation (HF) if explicitly enabled.
         generated = AIService.generate_questions(
             subject=subject_name,
             topic=subject_name,
@@ -103,10 +217,11 @@ def create_jamb_full_session():
             exam_type='JAMB',
         )
 
-        # Ensure we only return active/approved items.
-        # generate_questions returns Question objects already saved.
-        generated = [g for g in generated if g.is_active and g.is_approved]
-        qs.extend(generated[:gap])
+        validator = is_question_structurally_valid if allow_realtime_gen and os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes'] else is_question_valid
+        valid_generated = [g for g in generated if validator(g)]
+        qs.extend(valid_generated[:gap])
+        if len(qs) < target_count:
+            return None
         return qs[:target_count]
 
     sections_order = [english_subject] + other_subjects
@@ -117,6 +232,11 @@ def create_jamb_full_session():
     for section_subject in sections_order:
         sec_count = counts[section_subject]
         qs = fetch_questions_for_subject(section_subject, sec_count)
+        if not qs or len(qs) < sec_count:
+            return error_response(
+                f'Not enough valid questions for {section_subject}. Please review the question bank.',
+                422,
+            )
         sections.append({
             'subject': section_subject,
             'question_count': len(qs),
@@ -176,6 +296,8 @@ def create_session():
 
     question_ids = data.get('question_ids') or []
     if isinstance(question_ids, list) and len(question_ids) > 0:
+        aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
+        validator = is_question_structurally_valid if aggressive else is_question_valid
         # Build a session from explicit question ids (e.g. bookmarks).
         q_rows = Question.query.filter(
             Question.id.in_(question_ids),
@@ -185,7 +307,15 @@ def create_session():
 
         q_map = {str(q.id): q for q in q_rows}
         ordered = [q_map.get(str(qid)) for qid in question_ids]
-        questions = [q for q in ordered if q]
+        questions = [q for q in ordered if q and validator(q)]
+        invalid = [q for q in ordered if q and not validator(q)]
+
+        if invalid:
+            quarantine_questions(invalid, reason='invalid_question')
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
         if not questions:
             return error_response('No valid questions found', 422)
@@ -211,7 +341,9 @@ def create_session():
     if session.year:       q_query = q_query.filter_by(year=session.year)
     if session.difficulty: q_query = q_query.filter_by(difficulty=session.difficulty)
 
-    questions = q_query.order_by(db.func.random()).limit(session.total_questions).all()
+    questions = _fetch_valid_questions(q_query, session.total_questions)
+    if not questions:
+        return error_response('No valid questions found', 422)
     session.question_ids = [q.id for q in questions]
     session.total_questions = len(questions)
 
@@ -408,6 +540,21 @@ def submit_answer(session_id):
     time_spent       = data.get('time_spent', 0)
 
     question = Question.query.get_or_404(question_id)
+
+    answer_source = 'db'
+    answer_updated = False
+    aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
+    if aggressive and is_question_structurally_valid(question):
+        ai_result = _resolve_correct_answer_with_ai(question)
+        if ai_result and ai_result.get('correct_answer') in ['A', 'B', 'C', 'D']:
+            ai_correct = ai_result.get('correct_answer')
+            answer_source = 'ai_cached' if ai_result.get('cached') else 'ai_live'
+            if question.correct_answer != ai_correct:
+                question.correct_answer = ai_correct
+                answer_updated = True
+            if ai_result.get('explanation'):
+                question.explanation = ai_result.get('explanation')
+
     is_correct = selected_option == question.correct_answer
 
     answer = SessionAnswer(
@@ -485,6 +632,8 @@ def submit_answer(session_id):
         'explanation': question.explanation,
         'explanation_steps': question.explanation_steps,
         'common_mistake': question.common_mistake,
+        'answer_source': answer_source,
+        'answer_updated': answer_updated,
         'topic_performance': perf.to_dict() if perf else None,
         # ✨ Mimo-style: XP data for frontend animation
         'points_earned': points_earned,
@@ -502,6 +651,39 @@ def get_option_explanation(question_id):
         return error_response('selected_option must be A, B, C, or D', 422)
 
     question = Question.query.get_or_404(question_id)
+    aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
+    if not is_question_valid(question):
+        if aggressive and is_question_structurally_valid(question):
+            ai_result = _resolve_correct_answer_with_ai(question)
+            if ai_result and ai_result.get('correct_answer') in ['A', 'B', 'C', 'D']:
+                question.correct_answer = ai_result.get('correct_answer')
+                if ai_result.get('explanation'):
+                    question.explanation = ai_result.get('explanation')
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+            else:
+                return success_response({
+                    'explanation': 'This question has a data issue and could not be verified yet.',
+                    'cached': False,
+                    'selected_option': selected_option,
+                    'correct_option': None,
+                    'data_issue': True,
+                })
+        else:
+            quarantine_questions([question], reason='invalid_question')
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            return success_response({
+                'explanation': 'This question has a data issue and has been flagged for review. Please skip it for now.',
+                'cached': False,
+                'selected_option': selected_option,
+                'correct_option': None,
+                'data_issue': True,
+            })
     options_hash = build_options_hash(question)
 
     existing = QuestionOptionExplanation.query.filter_by(
@@ -576,8 +758,14 @@ Answer: Option {correct_option} — <short reason>.
     if not explanation_text:
         explanation_text = _fallback_option_explanation(question, selected_option)
 
-    if 'answer:' not in explanation_text.lower():
-        explanation_text = explanation_text.rstrip() + f"\nAnswer: Option {correct_option} — {correct_text}"
+    answer_line = build_answer_line(question)
+    if not answer_line:
+        answer_line = 'Answer: Option unavailable due to a data issue.'
+    explanation_text = _strip_answer_lines(explanation_text)
+    if explanation_text:
+        explanation_text = explanation_text + f"\n{answer_line}"
+    else:
+        explanation_text = answer_line
 
     record = QuestionOptionExplanation(
         question_id=question.id,

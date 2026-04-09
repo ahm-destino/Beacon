@@ -1,27 +1,26 @@
 # render.yaml
-# Render Blueprint (100% FREE TIER ONLY)
-# Note: Render does not have free tiers for Background Workers or Cron Jobs.
-# If you want to use those without paying, we will have to use external free tools like cron-job.org later!
+# Render Blueprint (Infrastructure as Code) - 100% Free Tier Compatible
 
 services:
-  # 1. Main Web API Service (Flask)
+  # 1. Backend Web API Service (Flask)
   - type: web
     name: beacon-api
     env: python
     rootDir: beacon-backend
     region: virginia
-    plan: free # Strictly Free Tier
+    plan: free
     buildCommand: |
       pip install -r requirements.txt
+    startCommand: |
+      # Run migrations and essential setup on every start
       python add_pgvector_extension.py
       flask db upgrade
-      python seed_from_json.py
-    startCommand: bash start.sh
+      bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.12
       - key: DATABASE_URL
-        sync: false
+        sync: false # User provides this in Render dashboard
       - key: REDIS_URL
         fromService:
           type: redis
@@ -37,15 +36,80 @@ services:
           type: redis
           name: beacon-cache
           property: connectionString
-      - key: FLASK_DEBUG
-        value: "0"
       - key: FLASK_APP
         value: "run.py"
+      - key: FLASK_DEBUG
+        value: "0"
+      
+      # Security & Auth
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      
+      # AI Services
+      - key: GEMINI_API_KEYS
+        sync: false
+      - key: GEMINI_MODELS
+        value: "gemini-2.1-flash,gemini-2.0-flash,gemini-1.5-flash"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: AI_ANSWER_PROVIDER
+        value: "gemini"
+      
+      # 3rd Party Integrations
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: "hello@beacon.ng"
+      - key: TERMII_API_KEY
+        sync: false
+      - key: TERMII_SENDER_ID
+        value: "Beacon"
+      
+      # AWS / Storage
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_REGION
+        value: "eu-west-1"
 
-  # 2. Managed Redis Cache (Free Tier)
+      # Platform Config (Update manually after first deployment)
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  # 2. Frontend Static Site Service (React/Vite)
+  - type: static
+    name: beacon-frontend
+    env: static
+    rootDir: beacon-frontend
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: "no-cache"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # 3. Managed Redis Cache (Free Tier)
   - type: redis
     name: beacon-cache
     region: virginia
-    plan: free # Strictly Free Tier
+    plan: free
     ipAllowList: []
-

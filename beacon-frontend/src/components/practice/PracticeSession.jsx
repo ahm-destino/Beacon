@@ -21,6 +21,16 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+const isValidBackendQuestion = (q) => {
+  if (!q) return false;
+  const text = (q.question_text || '').trim();
+  const options = [q.option_a, q.option_b, q.option_c, q.option_d].map(o => (o ?? '').toString().trim());
+  if (!text || options.some(o => !o)) return false;
+  const normalized = options.map(o => o.toLowerCase());
+  if (new Set(normalized).size < 4) return false;
+  return true;
+};
+
 export default function PracticeSession({ forcedMode }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +93,7 @@ export default function PracticeSession({ forcedMode }) {
   const [feedbackExpanded, setFeedbackExpanded] = useState(true);
   const [copiedExplanation, setCopiedExplanation] = useState(false);
   const [optionExplanations, setOptionExplanations] = useState({});
+  const [verifyingAnswers, setVerifyingAnswers] = useState({});
   // Mimo-style +XP popup
   const [xpPopup, setXpPopup] = useState(null); // { amount, key }
 
@@ -141,12 +152,15 @@ export default function PracticeSession({ forcedMode }) {
 
   const currentQuestion = questions[currentIndex];
   const selected = answers[currentQuestion?.id];
-  const isCorrect = selected && selected === currentQuestion?.correctAnswer;
+  const needsVerification = selected && !currentQuestion?.correctAnswer;
+  const isVerifying = currentQuestion?.id ? (Boolean(verifyingAnswers[currentQuestion.id]) || needsVerification) : false;
+  const canShowCorrect = Boolean(currentQuestion?.correctAnswer) && !isVerifying;
+  const isCorrect = canShowCorrect && selected && selected === currentQuestion?.correctAnswer;
 
   // Translate the DB correct answer letter → the visual letter the student sees (after shuffle)
-  const visualCorrectLetter = currentQuestion?.optionMapping
+  const visualCorrectLetter = canShowCorrect && currentQuestion?.optionMapping
     ? ['A', 'B', 'C', 'D'][currentQuestion.optionMapping.indexOf(currentQuestion.correctAnswer)]
-    : currentQuestion?.correctAnswer;
+    : (canShowCorrect ? currentQuestion?.correctAnswer : null);
 
   const progressPct = questions.length ? Math.round(((currentIndex + 1) / questions.length) * 100) : 0;
   const questionLabel = questions.length ? `Question ${currentIndex + 1} of ${questions.length}` : 'Preparing...';
@@ -164,6 +178,7 @@ export default function PracticeSession({ forcedMode }) {
     let cancelled = false;
 
     const normalizeBackendQuestion = (q) => {
+      if (!isValidBackendQuestion(q)) return null;
       const originalOptions = [
         { original: 'A', text: q.option_a },
         { original: 'B', text: q.option_b },
@@ -244,8 +259,21 @@ export default function PracticeSession({ forcedMode }) {
 
         if (cancelled) return;
 
+        const normalized = backendQuestions.map(normalizeBackendQuestion).filter(Boolean);
+        const skipped = backendQuestions.length - normalized.length;
+        if (skipped > 0) {
+          toast.error(`${skipped} question${skipped > 1 ? 's' : ''} skipped due to data issues.`);
+        }
+
+        if (normalized.length === 0) {
+          toast.error('No valid questions available. Please try again later.');
+          setQuestions(fallbackQuestions);
+          setSessionId(null);
+          return;
+        }
+
         setSessionId(backendSession?.id);
-        setQuestions(backendQuestions.map(normalizeBackendQuestion));
+        setQuestions(normalized);
         setAnswers({});
         setCurrentIndex(0);
         setSessionStartMs(backendSession?.started_at ? new Date(backendSession.started_at).getTime() : Date.now());
@@ -310,20 +338,9 @@ export default function PracticeSession({ forcedMode }) {
 
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: originalLetter }));
     setFeedbackExpanded(true);
+    setVerifyingAnswers(prev => ({ ...prev, [currentQuestion.id]: true }));
 
     const timeSpent = Math.max(0, Math.round((Date.now() - questionStartMs) / 1000));
-    const isAnswerCorrect = originalLetter === currentQuestion.correctAnswer;
-
-    // Optimistic local state (keeps UI snappy even before API response)
-    if (isAnswerCorrect) {
-      const speedBonus = timeSpent && timeSpent < 30 ? 5 : 0;
-      setPointsEarned(prev => prev + 10 + speedBonus);
-      setPointsBreakdown(prev => ({
-        ...prev,
-        answerPoints: prev.answerPoints + 10,
-        speedBonus: prev.speedBonus + speedBonus,
-      }));
-    }
 
     if (!skipBackendSession && isUuidLike(sessionId)) {
       try {
@@ -333,33 +350,86 @@ export default function PracticeSession({ forcedMode }) {
           time_spent: timeSpent,
           is_flagged: false,
         });
+        const serverCorrect = res?.data?.correct_answer;
+        const serverExplanation = res?.data?.explanation;
+        if (serverCorrect) {
+          setQuestions(prev => prev.map(q => (
+            q.id === currentQuestion.id
+              ? { ...q, correctAnswer: serverCorrect, explanation: serverExplanation || q.explanation }
+              : q
+          )));
+        }
+
         // 🎉 Mimo-style: show floating +XP chip using backend's real value
         const earned = res?.data?.points_earned ?? 0;
         if (earned > 0) {
           setXpPopup({ amount: earned, key: Date.now() });
           setTimeout(() => setXpPopup(null), 1200);
+          setPointsEarned(prev => prev + earned);
+        }
+
+        const breakdown = res?.data?.xp_breakdown || [];
+        if (breakdown.length > 0) {
+          let answerPoints = 0;
+          let speedBonus = 0;
+          let streakBonus = 0;
+          breakdown.forEach((item) => {
+            const label = (item.label || '').toLowerCase();
+            const value = Number(item.value || 0);
+            if (label.includes('correct')) answerPoints += value;
+            else if (label.includes('speed')) speedBonus += value;
+            else if (label.includes('streak')) streakBonus += value;
+          });
+          if (answerPoints || speedBonus || streakBonus) {
+            setPointsBreakdown(prev => ({
+              ...prev,
+              answerPoints: prev.answerPoints + answerPoints,
+              speedBonus: prev.speedBonus + speedBonus,
+              streakBonus: prev.streakBonus + streakBonus,
+            }));
+          }
         }
       } catch (_) {
         // Best-effort
       }
       window.dispatchEvent(new Event('beacon-weakareas-refresh'));
-    } else if (isAnswerCorrect) {
-      // Offline/fallback popup
-      setXpPopup({ amount: 10, key: Date.now() });
-      setTimeout(() => setXpPopup(null), 1200);
+    } else {
+      const offlineCorrect = currentQuestion?.correctAnswer && originalLetter === currentQuestion.correctAnswer;
+      if (offlineCorrect) {
+        // Offline/fallback popup
+        setXpPopup({ amount: 10, key: Date.now() });
+        setTimeout(() => setXpPopup(null), 1200);
+        setPointsEarned(prev => prev + 10);
+        setPointsBreakdown(prev => ({
+          ...prev,
+          answerPoints: prev.answerPoints + 10,
+        }));
+      }
     }
 
     if (mode === 'practice' && currentQuestion?.id) {
       try {
         const res = await Practice.getOptionExplanation(currentQuestion.id, originalLetter);
         const explanation = res?.data?.explanation;
+        const correctOption = res?.data?.correct_option;
         if (explanation) {
           setOptionExplanations(prev => ({ ...prev, [currentQuestion.id]: explanation }));
+        }
+        if (correctOption) {
+          setQuestions(prev => prev.map(q => (
+            q.id === currentQuestion.id ? { ...q, correctAnswer: correctOption } : q
+          )));
         }
       } catch (_) {
         // Best-effort fallback to existing explanation
       }
     }
+
+    setVerifyingAnswers(prev => {
+      const next = { ...prev };
+      delete next[currentQuestion.id];
+      return next;
+    });
   };
 
   const handleNext = () => {
@@ -540,7 +610,7 @@ export default function PracticeSession({ forcedMode }) {
               
               const isSelected = selected === mappedLetter;
               const isCorrectOption = mappedLetter === currentQuestion.correctAnswer;
-              const showResult = mode === 'practice' && selected;
+              const showResult = mode === 'practice' && selected && canShowCorrect;
 
               let optionStyle = 'border-sky-100 dark:border-sky-900/20 bg-white dark:bg-[#0D1525] text-[#0C4A6E] dark:text-[#F0F9FF]/80';
               
@@ -586,15 +656,17 @@ export default function PracticeSession({ forcedMode }) {
 
             <div className="max-w-md mx-auto px-6 pb-10 pt-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center ${isCorrect ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' : 'bg-red-50 dark:bg-red-900/20 text-red-500'}`}>
-                  {isCorrect ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+                <div className={`w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center ${isVerifying ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-500' : (isCorrect ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' : 'bg-red-50 dark:bg-red-900/20 text-red-500')}`}>
+                  {isVerifying ? <Clock size={22} /> : (isCorrect ? <CheckCircle2 size={24} /> : <XCircle size={24} />)}
                 </div>
                 <div className="flex-1 flex justify-between items-center">
                   <div>
-                    <h3 className={`font-[var(--font-syne)] font-bold text-lg ${isCorrect ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {isCorrect ? '✅ Correct!' : 'Not quite.'}
+                    <h3 className={`font-[var(--font-syne)] font-bold text-lg ${isVerifying ? 'text-sky-600' : (isCorrect ? 'text-emerald-600' : 'text-red-600')}`}>
+                      {isVerifying ? 'Checking answer…' : (isCorrect ? '✅ Correct!' : 'Not quite.')}
                     </h3>
-                    {!isCorrect && <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Answer: Option {visualCorrectLetter}</p>}
+                    {!isVerifying && !isCorrect && (
+                      <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Answer: Option {visualCorrectLetter}</p>
+                    )}
                   </div>
                   
                   {/* Inline Next Button when collapsed */}
@@ -614,14 +686,19 @@ export default function PracticeSession({ forcedMode }) {
                   <div className="text-[10px] font-bold uppercase tracking-widest text-sky-500">Explanation</div>
                   <button
                     onClick={handleCopyExplanation}
-                    className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                    className={`text-[10px] font-bold uppercase tracking-widest ${isVerifying ? 'text-sky-300 cursor-not-allowed' : 'text-sky-500 hover:text-sky-600'}`}
                     title="Copy steps"
+                    disabled={isVerifying}
                   >
                     {copiedExplanation ? 'Copied' : 'Copy steps'}
                   </button>
                 </div>
                 <div className="text-sm font-[var(--font-jakarta)] text-[#0C4A6E] dark:text-[#F0F9FF]/70 leading-relaxed mb-4">
-                  <FormattedExplanation text={optionExplanations[currentQuestion?.id] || currentQuestion.explanation} />
+                  {isVerifying ? (
+                    <div className="text-sky-500 text-xs font-bold uppercase tracking-widest">Verifying answer…</div>
+                  ) : (
+                    <FormattedExplanation text={optionExplanations[currentQuestion?.id] || currentQuestion.explanation} />
+                  )}
                 </div>
                 {currentQuestion.referenceLink && (
                   <a 
