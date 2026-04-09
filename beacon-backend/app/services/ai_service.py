@@ -817,7 +817,7 @@ Return exactly valid JSON matching this structure:
   "quiz_questions": [{{"question": "...", "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}}, "correct_answer": "A", "explanation": "..."}}]
 }}
 """
-                result = cls.generate_structured_content(prompt, provider='hf')
+                result = cls.generate_structured_content(prompt, provider='groq')
                 
                 def sanitize_name(name, fallback):
                     if not name: return fallback
