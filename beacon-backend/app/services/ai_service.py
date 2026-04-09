@@ -912,8 +912,9 @@ D) {question.option_d}
 
 Rules:
 1. Search the web to find the absolute truth for this question.
-2. Provide the 'correct_answer_text' found in your research (e.g. "Nitrous Oxide").
-3. Return ONLY valid JSON with keys: correct_answer_text, confidence, brief_explanation.
+2. Examine the 4 provided options (A, B, C, D).
+3. Provide the 'correct_answer_text' exactly as it appears in the BEST matching option. Even if your discovered truth uses slightly different wording, pick the option that represents that truth.
+4. Return ONLY valid JSON with keys: correct_answer_text, confidence, brief_explanation.
 """
         try:
             if provider == 'gemini':

@@ -571,11 +571,15 @@ def submit_answer(session_id):
     if is_correct:
         session.correct = (session.correct or 0) + 1
 
-    # Update question stats
-    question.times_answered = (question.times_answered or 0) + 1
+    # Update question stats (Fix 500: Handle nulls)
+    tc = (question.times_correct or 0)
+    ta = (question.times_answered or 0) + 1
     if is_correct:
-        question.times_correct = (question.times_correct or 0) + 1
-    question.pass_rate = question.times_correct / question.times_answered
+        tc += 1
+    
+    question.times_answered = ta
+    question.times_correct = tc
+    question.pass_rate = (tc / ta) if ta > 0 else 0
 
     db.session.add(answer)
     
@@ -621,8 +625,16 @@ def submit_answer(session_id):
     # ═══════════════════════════════════════════════════════
     if not getattr(question, 'hf_enriched', False):
         try:
-            from celery_worker import enrich_question_async
-            enrich_question_async.delay(str(question.id))
+            from threading import Thread
+            def run_enrichment(qid):
+                from flask import current_app
+                app = current_app._get_current_object()
+                with app.app_context():
+                    from celery_worker import enrich_question_async
+                    # We call the function directly in a thread to avoid Celery/Redis OOM on Render
+                    enrich_question_async(qid)
+
+            Thread(target=run_enrichment, args=(str(question.id),), daemon=True).start()
         except Exception:
             pass
 
