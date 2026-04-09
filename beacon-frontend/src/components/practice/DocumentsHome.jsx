@@ -69,8 +69,13 @@ export default function DocumentsHome() {
           if (doc.status === 'complete') toast.success('Document ready');
           if (doc.status === 'failed') toast.error('Document processing failed');
         }
-      } catch (_) {
-        // ignore polling errors
+      } catch (err) {
+        // If the document is not found (404), stop polling and remove it from view
+        if (err.response?.status === 404) {
+          clearInterval(interval);
+          delete pollingRef.current[docId];
+          setDocs((prev) => prev.filter((d) => d.id !== docId));
+        }
       }
     }, 3000);
 

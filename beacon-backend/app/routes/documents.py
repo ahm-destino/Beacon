@@ -94,7 +94,7 @@ def upload_document():
         status='processing',
     )
     db.session.add(doc)
-    db.session.commit()
+    db.session.flush() # Get the ID without committing yet
 
     # Upload to Cloudinary
     # We use the document ID as the public_id to keep it unique and stable
