@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
 import { Onboarding } from '../../services/api';
@@ -56,11 +56,17 @@ export default function SubjectSelection() {
     },
   ];
 
+  const ensureEnglishForJamb = (subjects) => {
+    if (examType !== 'JAMB') return subjects;
+    const withoutEnglish = subjects.filter((s) => s !== ENGLISH_VALUE);
+    return [ENGLISH_VALUE, ...withoutEnglish];
+  };
+
   const getInitialSelected = () => {
     // Load from persistent context first
     const savedSubjects = onboardingData.step3.subjects || [];
     if (savedSubjects.length > 0) {
-      return savedSubjects;
+      return ensureEnglishForJamb(savedSubjects);
     }
     // Default for JAMB
     if (examType === 'JAMB') return [ENGLISH_VALUE];
@@ -69,6 +75,16 @@ export default function SubjectSelection() {
 
   const [selectedSubjects, setSelectedSubjects] = useState(getInitialSelected);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (examType !== 'JAMB') return;
+    setSelectedSubjects((prev) => {
+      if (prev.includes(ENGLISH_VALUE)) return prev;
+      const next = [ENGLISH_VALUE, ...prev];
+      updateStep('step3', { subjects: next });
+      return next;
+    });
+  }, [examType, updateStep]);
 
   const selectedOthersCount =
     examType === 'JAMB'

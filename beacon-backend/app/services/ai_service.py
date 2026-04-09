@@ -1,5 +1,8 @@
 import os
 import json
+import time
+import random
+import threading
 from datetime import datetime
 from groq import Groq
 from ..extensions import db
@@ -30,12 +33,40 @@ class AIService:
 
     _client = None
 
-    GROQ_FALLBACK_MODELS = [
+    # Default Groq model rotation list (based on current Groq Supported Models page).
+    # Order is tuned for fast/cheap real-time responses first.
+    GROQ_DEFAULT_MODELS = [
         'llama-3.1-8b-instant',
+        'openai/gpt-oss-20b',
+        'qwen/qwen3-32b',
         'llama-3.3-70b-versatile',
-        'gemma2-9b-it',
-        'mixtral-8x7b-32768'
+        'openai/gpt-oss-120b',
     ]
+
+    GROQ_PREVIEW_MODELS = [
+        'meta-llama/llama-4-scout-17b-16e-instruct',
+    ]
+
+    # Models to exclude from chat completions (audio/guard/safety/etc)
+    GROQ_NON_CHAT_SUBSTRINGS = [
+        'whisper',
+        'speech',
+        'tts',
+        'audio',
+        'transcription',
+        'translation',
+        'prompt-guard',
+        'safeguard',
+    ]
+
+    GROQ_MODEL_COOLDOWN_RATE_LIMIT = int(os.getenv('GROQ_COOLDOWN_RATE_LIMIT_SECS', '30'))
+    GROQ_MODEL_COOLDOWN_UNAVAILABLE = int(os.getenv('GROQ_COOLDOWN_UNAVAILABLE_SECS', '10'))
+    GROQ_MODEL_COOLDOWN_NOT_FOUND = int(os.getenv('GROQ_COOLDOWN_NOT_FOUND_SECS', '300'))
+    GROQ_MODEL_REFRESH_SECS = int(os.getenv('GROQ_MODEL_REFRESH_SECS', '1800'))
+
+    _groq_model_cache = {'models': None, 'fetched_at': 0.0}
+    _groq_model_cooldowns = {}
+    _groq_model_lock = threading.Lock()
 
     @classmethod
     def get_client(cls):
@@ -47,12 +78,96 @@ class AIService:
         return cls._client
 
     @classmethod
+    def _should_exclude_model(cls, model_id: str) -> bool:
+        if not model_id:
+            return True
+        model_id_lower = model_id.lower()
+        return any(bad in model_id_lower for bad in cls.GROQ_NON_CHAT_SUBSTRINGS)
+
+    @classmethod
+    def _fetch_groq_models_from_api(cls):
+        """Fetch active models from Groq API (cached)."""
+        with cls._groq_model_lock:
+            now = time.time()
+            cached = cls._groq_model_cache.get('models')
+            fetched_at = cls._groq_model_cache.get('fetched_at', 0.0)
+            if cached and (now - fetched_at) < cls.GROQ_MODEL_REFRESH_SECS:
+                return cached
+
+            try:
+                client = cls.get_client()
+                data = client.models.list()
+                items = getattr(data, 'data', None) or []
+                model_ids = [
+                    m.id for m in items
+                    if getattr(m, 'active', True) and not cls._should_exclude_model(getattr(m, 'id', ''))
+                ]
+                # Keep stable ordering: prioritize defaults, then append anything else
+                preferred = [m for m in cls.GROQ_DEFAULT_MODELS if m in model_ids]
+                others = [m for m in model_ids if m not in preferred]
+                ordered = preferred + others
+                cls._groq_model_cache = {'models': ordered, 'fetched_at': now}
+                return ordered
+            except Exception:
+                # If API fetch fails, fall back to defaults
+                return None
+
+    @classmethod
+    def get_groq_model_candidates(cls):
+        """
+        Resolve the Groq model rotation list.
+        Order of precedence:
+        1) GROQ_MODELS env (comma-separated)
+        2) GROQ_MODEL_SOURCE=api (fetch active models)
+        3) GROQ_DEFAULT_MODELS (+ preview if enabled)
+        """
+        override = os.getenv('GROQ_MODELS')
+        if override:
+            models = [m.strip() for m in override.split(',') if m.strip()]
+            return [m for m in models if not cls._should_exclude_model(m)]
+
+        source = os.getenv('GROQ_MODEL_SOURCE', '').strip().lower()
+        if source == 'api':
+            api_models = cls._fetch_groq_models_from_api()
+            if api_models:
+                return api_models
+
+        include_preview = os.getenv('GROQ_INCLUDE_PREVIEW', '').strip().lower() in ['1', 'true', 'yes']
+        models = list(cls.GROQ_DEFAULT_MODELS)
+        if include_preview:
+            models.extend(cls.GROQ_PREVIEW_MODELS)
+        return [m for m in models if not cls._should_exclude_model(m)]
+
+    @classmethod
+    def _cooldown_model(cls, model: str, seconds: int):
+        # Add small jitter to avoid thundering herd
+        jitter = random.uniform(0, 2.0)
+        until = time.time() + max(1, seconds) + jitter
+        with cls._groq_model_lock:
+            cls._groq_model_cooldowns[model] = until
+
+    @classmethod
+    def _is_model_cooled(cls, model: str) -> bool:
+        with cls._groq_model_lock:
+            until = cls._groq_model_cooldowns.get(model, 0)
+        return time.time() < until
+
+    @classmethod
     def execute_groq_with_fallback(cls, messages, stream=False, max_tokens=2000, temperature=0.7):
         """Automatically retries across multiple Groq models if rate limited."""
         client = cls.get_client()
         last_exception = None
-        
-        for model in cls.GROQ_FALLBACK_MODELS:
+
+        models = cls.get_groq_model_candidates()
+        if not models:
+            raise Exception("No Groq models configured.")
+
+        # Skip models in cooldown; if all are cooling, try the full list anyway.
+        active_models = [m for m in models if not cls._is_model_cooled(m)]
+        if not active_models:
+            active_models = models
+
+        for model in active_models:
             try:
                 response = client.chat.completions.create(
                     model=model,
@@ -65,11 +180,21 @@ class AIService:
             except Exception as e:
                 err_str = str(e).lower()
                 # If rate limit (429), unavailable (503), or model not found (404), catch and retry next model
-                if "rate limit" in err_str or "429" in err_str or "availability" in err_str or "503" in err_str or "not found" in err_str or "404" in err_str:
+                if "rate limit" in err_str or "429" in err_str:
+                    cls._cooldown_model(model, cls.GROQ_MODEL_COOLDOWN_RATE_LIMIT)
                     last_exception = e
-                    import time
                     time.sleep(1) # tiny throttle between attempts
-                    continue # switch gracefully
+                    continue
+                if "availability" in err_str or "503" in err_str:
+                    cls._cooldown_model(model, cls.GROQ_MODEL_COOLDOWN_UNAVAILABLE)
+                    last_exception = e
+                    time.sleep(1)
+                    continue
+                if "not found" in err_str or "404" in err_str:
+                    cls._cooldown_model(model, cls.GROQ_MODEL_COOLDOWN_NOT_FOUND)
+                    last_exception = e
+                    time.sleep(1)
+                    continue
                 raise e # fatal api key error
                     
         raise Exception(f"All Groq fallback models rate limited or unavailable. Last error: {last_exception}")
@@ -280,6 +405,11 @@ Explanation level instruction: {inst}{rag_section}
 ALWAYS:
 - Format responses with headers, bold, bullets where appropriate
 - Use Nigerian examples and local context naturally
+- When solving or simplifying a problem, write steps as:
+  Step 1: ...
+  Step 2: ...
+  Step 3: ...
+  Answer: ...
 - End every response with a next step or question to check understanding
 
 NEVER:
@@ -517,7 +647,7 @@ Return exactly valid JSON matching this structure:
   "quiz_questions": [{{"question": "...", "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}}, "correct_answer": "A", "explanation": "..."}}]
 }}
 """
-                result = cls.generate_structured_content(prompt)
+                result = cls.generate_structured_content(prompt, provider='hf')
                 
                 def sanitize_name(name, fallback):
                     if not name: return fallback
@@ -564,8 +694,12 @@ Return exactly valid JSON matching this structure:
             return processed_count > 0
 
     @classmethod
-    def generate_structured_content(cls, prompt, schema_type=None):
+    def generate_structured_content(cls, prompt, schema_type=None, provider='groq'):
         """Generate structured JSON content from AI."""
+        provider = (provider or 'groq').strip().lower()
+        if provider == 'hf':
+            return cls._generate_structured_content_hf(prompt)
+
         try:
             response = cls.execute_groq_with_fallback(
                 messages=[{'role': 'user', 'content': prompt}],
@@ -579,7 +713,42 @@ Return exactly valid JSON matching this structure:
             elif '```' in text:
                 text = text.split('```')[1].split('```')[0].strip()
             text = text.strip()
-            
+
+            import re
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                match = re.search(r'(\[|\{).*(\]|\})', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group(0))
+        except Exception:
+            return None
+        return None
+
+    @classmethod
+    def _generate_structured_content_hf(cls, prompt):
+        """Generate structured JSON content using Hugging Face (background tasks)."""
+        try:
+            from huggingface_hub import InferenceClient
+            hf_token = os.getenv('HF_TOKEN')
+            if not hf_token:
+                return None
+
+            model_id = os.getenv('HF_STRUCTURED_MODEL') or 'meta-llama/Meta-Llama-3-8B-Instruct'
+            hf_client = InferenceClient(token=hf_token)
+            response = hf_client.chat.completions.create(
+                model=model_id,
+                max_tokens=4000,
+                temperature=0.2,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+            text = response.choices[0].message.content
+            if '```json' in text:
+                text = text.split('```json')[1].split('```')[0].strip()
+            elif '```' in text:
+                text = text.split('```')[1].split('```')[0].strip()
+            text = text.strip()
+
             import re
             try:
                 return json.loads(text)

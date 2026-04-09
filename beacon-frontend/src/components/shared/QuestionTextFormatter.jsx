@@ -1,6 +1,81 @@
 import React, { useState } from 'react';
 import { ChevronDown, BookOpen, AlertCircle } from 'lucide-react';
 
+const normalizeText = (value) => {
+  if (!value) return '';
+  return String(value)
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/(sentence|statement|passage)([A-Z])/gi, '$1 $2')
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+};
+
+const dedupeTrailingRepeat = (value) => {
+  if (!value) return value;
+  const trimmed = String(value).trim();
+  if (!trimmed) return value;
+
+  // Sentence-level dedupe when no multi-line blocks exist
+  if (!trimmed.includes('\n\n')) {
+    const sentences = trimmed.split(/(?<=[.!?])\s+/);
+    if (sentences.length >= 2) {
+      const last = sentences[sentences.length - 1].trim();
+      const prev = sentences[sentences.length - 2].trim();
+      if (last && prev && last.toLowerCase() === prev.toLowerCase()) {
+        sentences.pop();
+        return sentences.join(' ').trim();
+      }
+    }
+  }
+
+  // Character-based tail dedupe (catches repeated blocks without punctuation)
+  const maxLen = Math.min(200, Math.floor(trimmed.length / 2));
+  for (let len = maxLen; len >= 30; len -= 1) {
+    const tail = trimmed.slice(-len);
+    const beforeTail = trimmed.slice(-2 * len, -len);
+    if (tail && beforeTail && tail === beforeTail) {
+      return trimmed.slice(0, -len).trim();
+    }
+  }
+
+  return trimmed;
+};
+
+const splitInstructionBlock = (block) => {
+  const trimmed = String(block || '').trim();
+  if (!trimmed) return { instructionText: null, remainder: '' };
+
+  const firstDoubleNewline = trimmed.indexOf('\n\n');
+  if (firstDoubleNewline !== -1) {
+    return {
+      instructionText: trimmed.substring(0, firstDoubleNewline).trim(),
+      remainder: trimmed.substring(firstDoubleNewline).trim(),
+    };
+  }
+
+  const firstSingleNewline = trimmed.indexOf('\n');
+  if (firstSingleNewline !== -1) {
+    return {
+      instructionText: trimmed.substring(0, firstSingleNewline).trim(),
+      remainder: trimmed.substring(firstSingleNewline).trim(),
+    };
+  }
+
+  const sentenceBreak = trimmed.search(/[.!?]\s+/);
+  if (sentenceBreak !== -1) {
+    const splitAt = sentenceBreak + 1;
+    const instructionText = trimmed.substring(0, splitAt).trim();
+    const remainder = trimmed.substring(splitAt).trim();
+    if (remainder) {
+      return { instructionText, remainder };
+    }
+  }
+
+  return { instructionText: null, remainder: trimmed };
+};
+
 function renderTextWithBold(text) {
   if (!text) return null;
   return text.split('\n').map((paragraph, i) => {
@@ -57,12 +132,12 @@ export default function QuestionTextFormatter({ text }) {
 
   let instruction = null;
   let passage = null;
-  let pureQuestionStr = text;
+  let pureQuestionStr = normalizeText(text);
 
   // Extract Instruction
   if (pureQuestionStr.includes('**Instruction:**')) {
     const parts = pureQuestionStr.split('**Instruction:**');
-    const afterInstruction = parts[1];
+    const afterInstruction = (parts[1] || '').trim();
     
     if (afterInstruction.includes('**Passage:**')) {
       const pParts = afterInstruction.split('**Passage:**');
@@ -70,13 +145,14 @@ export default function QuestionTextFormatter({ text }) {
       pureQuestionStr = '**Passage:**' + pParts[1];
     } else {
       // No passage. Instruction is everything up to the first double newline
-      const firstDoubleNewline = afterInstruction.indexOf('\n\n');
-      if (firstDoubleNewline !== -1) {
-        instruction = afterInstruction.substring(0, firstDoubleNewline).trim();
-        pureQuestionStr = afterInstruction.substring(firstDoubleNewline).trim();
+      const split = splitInstructionBlock(afterInstruction);
+      if (split.instructionText) {
+        instruction = split.instructionText;
+        pureQuestionStr = split.remainder;
       } else {
-        instruction = afterInstruction.trim();
-        pureQuestionStr = '';
+        // If we can't confidently split, keep the full text visible
+        instruction = null;
+        pureQuestionStr = afterInstruction;
       }
     }
   }
@@ -97,6 +173,10 @@ export default function QuestionTextFormatter({ text }) {
       pureQuestionStr = '';
     }
   }
+
+  instruction = dedupeTrailingRepeat(instruction);
+  passage = dedupeTrailingRepeat(passage);
+  pureQuestionStr = dedupeTrailingRepeat(pureQuestionStr);
 
   const instructionColors = {
     border: 'border-amber-200 dark:border-amber-900/30',

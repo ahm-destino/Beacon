@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Bot, User } from 'lucide-react';
 import api from '../../services/api';
+import FormattedExplanation from '../shared/FormattedExplanation';
 
 export default function DocumentChat({ 
   documentId, 
@@ -93,9 +94,9 @@ export default function DocumentChat({
               <div className={`p-3 rounded-2xl text-sm ${
                 msg.role === 'user' 
                   ? 'bg-sky-500 text-white rounded-tr-none' 
-                  : 'bg-slate-100 dark:bg-[#1A2333] text-slate-700 dark:text-slate-200 rounded-tl-none whitespace-pre-wrap'
+                  : 'bg-slate-100 dark:bg-[#1A2333] text-slate-700 dark:text-slate-200 rounded-tl-none'
               }`}>
-                {msg.text}
+                {msg.role === 'assistant' ? <FormattedExplanation text={msg.text} /> : msg.text}
               </div>
             </div>
           ))}
@@ -137,4 +138,3 @@ export default function DocumentChat({
     </div>
   );
 }
-

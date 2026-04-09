@@ -322,7 +322,7 @@ Generate {count} NEW multiple choice quiz questions strictly based on this text.
 Return ONLY valid JSON matching this schema:
 [{{"question": "...", "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}}, "correct_answer": "A", "explanation": "..."}}]
 """
-    result = AIService.generate_structured_content(prompt)
+    result = AIService.generate_structured_content(prompt, provider='hf')
     if result and isinstance(result, list):
         current_quizzes = section.quiz_questions or []
         current_quizzes.extend(result)
@@ -362,6 +362,14 @@ def chat_with_document(doc_id):
     system_prompt = f"""You are a personal tutor helping a student study their personally uploaded document.
 Use the following extracted document text constraints to answer their questions. 
 If the document context lacks the exact answer, you may supplement it carefully with your own academic knowledge, but prioritize the document heavily!
+
+Formatting rules:
+- Use short sections, bullets, and clear spacing.
+- When solving or simplifying a problem, write:
+  Step 1: ...
+  Step 2: ...
+  Step 3: ...
+  Answer: ...
 
 --- DOCUMENT TEXT ---
 {doc_context}

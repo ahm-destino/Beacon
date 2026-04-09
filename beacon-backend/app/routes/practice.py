@@ -1,8 +1,11 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta, date
+import hashlib
+import json
+from sqlalchemy.exc import IntegrityError
 from ..extensions import db
-from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User
+from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User, QuestionOptionExplanation
 from ..utils.helpers import success_response, error_response, paginate_query
 from ..services.ai_service import AIService
 
@@ -11,6 +14,38 @@ practice_bp = Blueprint('practice', __name__)
 
 def get_uid():
     return get_jwt_identity()
+
+
+def build_options_hash(question: Question) -> str:
+    payload = {
+        'question_text': question.question_text,
+        'option_a': question.option_a,
+        'option_b': question.option_b,
+        'option_c': question.option_c,
+        'option_d': question.option_d,
+        'correct_answer': question.correct_answer,
+    }
+    raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+
+def _fallback_option_explanation(question: Question, selected_option: str) -> str:
+    correct = question.correct_answer
+    correct_text = getattr(question, f'option_{correct.lower()}', '') or ''
+    base = (question.explanation or '').strip()
+    if not base:
+        base = 'Match the option with the core concept and eliminate contradictions.'
+    if selected_option == correct:
+        return (
+            f"Step 1: Your choice matches the concept tested in the question.\n"
+            f"Step 2: {base}\n"
+            f"Answer: Option {correct} — {correct_text}"
+        )
+    return (
+        f"Step 1: The selected option does not satisfy the concept tested.\n"
+        f"Step 2: {base}\n"
+        f"Answer: Option {correct} — {correct_text}"
+    )
 
 
 @practice_bp.route('/sessions/jamb-full', methods=['POST'])
@@ -454,6 +489,141 @@ def submit_answer(session_id):
         # ✨ Mimo-style: XP data for frontend animation
         'points_earned': points_earned,
         'xp_breakdown': xp_breakdown,
+    })
+
+
+@practice_bp.route('/questions/<question_id>/explanation', methods=['POST'])
+@jwt_required()
+def get_option_explanation(question_id):
+    """Return (and cache) AI explanation tailored to the selected option."""
+    data = request.get_json() or {}
+    selected_option = (data.get('selected_option') or '').strip().upper()
+    if selected_option not in ['A', 'B', 'C', 'D']:
+        return error_response('selected_option must be A, B, C, or D', 422)
+
+    question = Question.query.get_or_404(question_id)
+    options_hash = build_options_hash(question)
+
+    existing = QuestionOptionExplanation.query.filter_by(
+        question_id=question.id,
+        selected_option=selected_option,
+        options_hash=options_hash,
+    ).first()
+
+    if existing:
+        existing.use_count = (existing.use_count or 0) + 1
+        existing.last_used_at = datetime.utcnow()
+        db.session.commit()
+        return success_response({
+            'explanation': existing.explanation_text,
+            'cached': True,
+            'selected_option': selected_option,
+            'correct_option': question.correct_answer,
+        })
+
+    selected_text = getattr(question, f'option_{selected_option.lower()}', '') or ''
+    correct_option = question.correct_answer
+    correct_text = getattr(question, f'option_{correct_option.lower()}', '') or ''
+
+    system_prompt = (
+        'You are a concise Nigerian exam tutor. Follow the formatting rules exactly. '
+        'Do not ask follow-up questions.'
+    )
+
+    prompt = f"""Explain the student's selected option for this question.
+
+Question: {question.question_text}
+Options:
+A) {question.option_a}
+B) {question.option_b}
+C) {question.option_c}
+D) {question.option_d}
+
+Student selected: {selected_option}) {selected_text}
+Correct answer: {correct_option}) {correct_text}
+
+Rules:
+- Use short sentences.
+- If this is not a calculation, steps are ordered reasoning points.
+- If the selected option is wrong, mention why it is wrong and why the correct option is right.
+- Use 2-4 steps.
+- Format exactly as:
+Step 1: ...
+Step 2: ...
+Step 3: ...
+Answer: Option {correct_option} — <short reason>.
+- Do not ask any follow-up questions.
+"""
+
+    explanation_text = None
+    model_name = None
+    try:
+        response = AIService.execute_groq_with_fallback(
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': prompt},
+            ],
+            stream=False,
+            max_tokens=700,
+            temperature=0.4,
+        )
+        if response and response.choices:
+            explanation_text = (response.choices[0].message.content or '').strip()
+            model_name = getattr(response, 'model', None)
+    except Exception:
+        explanation_text = None
+
+    if not explanation_text:
+        explanation_text = _fallback_option_explanation(question, selected_option)
+
+    if 'answer:' not in explanation_text.lower():
+        explanation_text = explanation_text.rstrip() + f"\nAnswer: Option {correct_option} — {correct_text}"
+
+    record = QuestionOptionExplanation(
+        question_id=question.id,
+        selected_option=selected_option,
+        correct_option=correct_option,
+        option_text=selected_text,
+        explanation_text=explanation_text,
+        options_hash=options_hash,
+        model_name=model_name,
+        created_by='ai',
+        use_count=1,
+        last_used_at=datetime.utcnow(),
+    )
+
+    try:
+        db.session.add(record)
+        db.session.commit()
+        return success_response({
+            'explanation': explanation_text,
+            'cached': False,
+            'selected_option': selected_option,
+            'correct_option': correct_option,
+        })
+    except IntegrityError:
+        db.session.rollback()
+        existing = QuestionOptionExplanation.query.filter_by(
+            question_id=question.id,
+            selected_option=selected_option,
+            options_hash=options_hash,
+        ).first()
+        if existing:
+            existing.use_count = (existing.use_count or 0) + 1
+            existing.last_used_at = datetime.utcnow()
+            db.session.commit()
+            return success_response({
+                'explanation': existing.explanation_text,
+                'cached': True,
+                'selected_option': selected_option,
+                'correct_option': correct_option,
+            })
+
+    return success_response({
+        'explanation': explanation_text,
+        'cached': False,
+        'selected_option': selected_option,
+        'correct_option': correct_option,
     })
 
 

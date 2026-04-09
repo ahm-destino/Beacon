@@ -6,6 +6,7 @@ import { Play, FileText, MessageSquare, Bookmark, Sparkles } from 'lucide-react'
 import api, { API_BASE_URL, AITutor } from '../../services/api';
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
+import FormattedExplanation, { buildCopyText } from '../shared/FormattedExplanation';
 
 const LEVELS = [
   { id: 'basic', label: '🌱 BASIC' },
@@ -50,6 +51,7 @@ export default function ConceptView() {
   const [videos, setVideos] = useState([]);
   const [relatedQuestions, setRelatedQuestions] = useState([]);
   const [streaming, setStreaming] = useState(false);
+  const [copiedExplanation, setCopiedExplanation] = useState(false);
   const [quizCount, setQuizCount] = useState(10);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
   const [confidence, setConfidence] = useState(null);
@@ -183,6 +185,19 @@ export default function ConceptView() {
   const handleLevelChange = (next) => {
     if (next === level) return;
     setLevel(next);
+  };
+
+  const handleCopyExplanation = async () => {
+    if (!explanation) return;
+    const { text } = buildCopyText(explanation);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedExplanation(true);
+      setTimeout(() => setCopiedExplanation(false), 1500);
+    } catch (_) {
+      // best effort
+    }
   };
 
   const goNext = () => {
@@ -384,12 +399,22 @@ export default function ConceptView() {
                 <h3 className="font-[var(--font-syne)] font-bold text-base text-[#0369A1] dark:text-[#0EA5E9]">
                   {level === 'basic' ? 'Quick Explain' : level === 'deep' ? 'Deep Breakdown' : 'Step-by-step Explain'}
                 </h3>
-                {streaming && (
-                  <span className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Streaming…</span>
-                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCopyExplanation}
+                    className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                    title="Copy steps"
+                    disabled={!explanation}
+                  >
+                    {copiedExplanation ? 'Copied' : 'Copy steps'}
+                  </button>
+                  {streaming && (
+                    <span className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Streaming…</span>
+                  )}
+                </div>
               </div>
-              <div className="text-sm text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 whitespace-pre-wrap leading-relaxed">
-                {explanation || 'Generating explanation…'}
+              <div className="text-sm text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 leading-relaxed">
+                {explanation ? <FormattedExplanation text={explanation} /> : 'Generating explanation…'}
               </div>
             </div>
           </>

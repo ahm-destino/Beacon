@@ -17,6 +17,13 @@ export default function ResultsReveal() {
       return {};
     }
   })();
+  const totalQuestions = Number(diagnosticResult?.total ?? diagnosticResult?.total_questions ?? diagnosticResult?.totalQuestions ?? 0);
+  const correctCount = Number(diagnosticResult?.correct ?? diagnosticResult?.correct_count ?? diagnosticResult?.correctCount ?? 0);
+  const wrongCount = Math.max(0, totalQuestions - correctCount);
+  const scoreValue = Number.isFinite(diagnosticResult?.score)
+    ? diagnosticResult.score
+    : (totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0);
+  const scorePct = Math.max(0, Math.min(100, scoreValue));
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
@@ -79,18 +86,34 @@ export default function ResultsReveal() {
           
           <div className="flex items-end gap-3 mb-2">
             <span className="font-[var(--font-syne)] font-black text-5xl text-[#0C4A6E] dark:text-[#F0F9FF] leading-none">
-              {typeof diagnosticResult?.score === 'number' ? diagnosticResult.score : 0}
+              {scoreValue}
             </span>
             <span className="text-lg text-[#0369A1] dark:text-[#7DD3FC] font-semibold mb-1">/ 100</span>
           </div>
           
           <div className="w-full h-2 bg-[#E0F2FE] dark:bg-[#111D2E] rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 w-[53%] rounded-full shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"></div>
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"
+              style={{ width: `${scorePct}%` }}
+            ></div>
           </div>
           <p className="text-sm font-[var(--font-jakarta)] font-medium text-[#0369A1] dark:text-[#7DD3FC] mt-4 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-amber-500" />
             You're halfway there. Let's push for 300+.
           </p>
+
+          <div className="grid grid-cols-2 gap-3 mt-5">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Correct</p>
+              <p className="font-[var(--font-syne)] font-black text-2xl text-emerald-700 dark:text-emerald-300">{correctCount}</p>
+              <p className="text-xs text-emerald-600/80 dark:text-emerald-300/80">{totalQuestions || '--'} total</p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-2xl p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Wrong</p>
+              <p className="font-[var(--font-syne)] font-black text-2xl text-red-700 dark:text-red-300">{wrongCount}</p>
+              <p className="text-xs text-red-600/80 dark:text-red-300/80">Need review</p>
+            </div>
+          </div>
         </div>
 
         {/* Strengths & Weaknesses */}

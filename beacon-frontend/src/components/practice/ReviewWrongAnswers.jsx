@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Brain, BookOpen, RotateCcw, ArrowRight, MessageSquare, Plus, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
+import FormattedExplanation, { buildCopyText } from '../shared/FormattedExplanation';
 
 export default function ReviewWrongAnswers() {
   const navigate = useNavigate();
   const location = useLocation();
   const { wrongQuestions = [], subject, examType } = location.state || {};
   const [expanded, setExpanded] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const { bookmarkIds, updateBookmarkId } = useBookmarkIds();
 
@@ -17,6 +19,20 @@ export default function ReviewWrongAnswers() {
   };
 
   const showToast = (msg) => console.info(msg);
+
+  const handleCopyExplanation = async (question) => {
+    const raw = question?.explanation || '';
+    if (!raw) return;
+    const { text } = buildCopyText(raw);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(question.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch (_) {
+      // best effort
+    }
+  };
 
   const filtered = activeFilter === 'All'
     ? wrongQuestions
@@ -131,13 +147,21 @@ export default function ReviewWrongAnswers() {
 
                   {expanded[question.id] && (
                     <div className="p-5 mt-2 bg-white dark:bg-[#080C14] rounded-3xl border border-sky-100 dark:border-sky-900/20 animate-in slide-in-from-top-4 duration-300">
-                      <div className="flex items-center gap-2 mb-3">
-                        <BookOpen size={16} className="text-sky-500" />
-                        <h4 className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Scientific Explanation</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <BookOpen size={16} className="text-sky-500" />
+                          <h4 className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Scientific Explanation</h4>
+                        </div>
+                        <button
+                          onClick={() => handleCopyExplanation(question)}
+                          className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                        >
+                          {copiedId === question.id ? 'Copied' : 'Copy steps'}
+                        </button>
                       </div>
-                      <p className="text-xs leading-relaxed text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 italic">
-                        {question.explanation || 'The logical progression for this module involves advanced subject-specific synthesis currently undergoing optimization.'}
-                      </p>
+                      <div className="text-xs leading-relaxed text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 italic">
+                        <FormattedExplanation text={question.explanation || 'The logical progression for this module involves advanced subject-specific synthesis currently undergoing optimization.'} />
+                      </div>
                     </div>
                   )}
                 </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronLeft, Settings, Camera, ArrowRight, ThumbsUp, ThumbsDown, PlayCircle, Target, Bookmark, RotateCw } from 'lucide-react';
 import api from '../../services/api';
+import { buildCopyText } from '../shared/FormattedExplanation';
+import FormattedExplanation from '../shared/FormattedExplanation';
 
 export default function ActiveChat() {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export default function ActiveChat() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState(existingMessages || []);
+  const [copiedId, setCopiedId] = useState(null);
   const didInitRef = useRef(false);
 
   const showToast = (msg) => {
@@ -194,6 +197,18 @@ export default function ActiveChat() {
     showToast('Added to review queue!');
   };
 
+  const handleCopySteps = async (msg) => {
+    const { text } = buildCopyText(msg?.text || '');
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(msg.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch (_) {
+      // best effort
+    }
+  };
+
   const resourceTopic = subject || questionContext?.subject || conceptContext?.name || 'General';
 
   const lastAiMessage = useMemo(() => {
@@ -272,7 +287,17 @@ export default function ActiveChat() {
               </div>
               <div className="bg-white dark:bg-[#0D1525] border border-sky-100 dark:border-sky-900/20 shadow-[0_2px_8px_rgba(14,165,233,0.06)] dark:shadow-none rounded-2xl rounded-tl-sm px-5 py-4">
                 <div className="font-[var(--font-jakarta)] text-sm leading-[1.8] text-[#0C4A6E] dark:text-[#F0F9FF]">
-                  {msg.text}
+                  <FormattedExplanation text={msg.text} />
+
+                  <div className="flex justify-end mt-3">
+                    <button
+                      onClick={() => handleCopySteps(msg)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                      title="Copy steps"
+                    >
+                      {copiedId === msg.id ? 'Copied' : 'Copy steps'}
+                    </button>
+                  </div>
 
                   {lastAiMessage?.id === msg.id && (
                     <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-sky-50 dark:border-sky-900/20">

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import OnboardingLayout from './OnboardingLayout';
 import { Onboarding } from '../../services/api';
+import QuestionTextFormatter from '../shared/QuestionTextFormatter';
 
 export default function DiagnosticQuestion() {
   const navigate = useNavigate();
@@ -13,6 +14,12 @@ export default function DiagnosticQuestion() {
   
   const [selectedOption, setSelectedOption] = useState(null);
   const [timeLeft, setTimeLeft] = useState(60);
+  const letters = useMemo(() => ['A', 'B', 'C', 'D'], []);
+  const currentQuestion = questions[Math.min(questionNumber - 1, Math.max(questions.length - 1, 0))] || null;
+  const currentOptions = currentQuestion
+    ? [currentQuestion.option_a, currentQuestion.option_b, currentQuestion.option_c, currentQuestion.option_d]
+    : [];
+  const imageUrl = currentQuestion?.image_url || currentQuestion?.imageUrl;
 
   useEffect(() => {
     // Filled by DiagnosticIntro after calling /api/onboarding/diagnostic/start
@@ -26,11 +33,22 @@ export default function DiagnosticQuestion() {
     }
   }, []);
 
-  // Reset state when question changes
+  // Restore selection + reset timer when question changes
   useEffect(() => {
-    setSelectedOption(null);
     setTimeLeft(60);
-  }, [questionNumber]);
+    if (!currentQuestion?.id) {
+      setSelectedOption(null);
+      return;
+    }
+    try {
+      const storedAnswers = JSON.parse(localStorage.getItem('beacon_diagnostic_answers') || '{}');
+      const storedLetter = storedAnswers[currentQuestion.id];
+      const idx = letters.indexOf(storedLetter);
+      setSelectedOption(idx >= 0 ? idx : null);
+    } catch (_) {
+      setSelectedOption(null);
+    }
+  }, [questionNumber, currentQuestion?.id, letters]);
 
   // Timer
   useEffect(() => {
@@ -39,11 +57,6 @@ export default function DiagnosticQuestion() {
       return () => clearTimeout(timerId);
     }
   }, [timeLeft]);
-
-  const currentQuestion = questions[Math.min(questionNumber - 1, Math.max(questions.length - 1, 0))] || null;
-  const currentOptions = currentQuestion
-    ? [currentQuestion.option_a, currentQuestion.option_b, currentQuestion.option_c, currentQuestion.option_d]
-    : [];
 
   const persistAnswer = (questionId, selectedLetter) => {
     const stored = JSON.parse(localStorage.getItem('beacon_diagnostic_answers') || '{}');
@@ -54,7 +67,6 @@ export default function DiagnosticQuestion() {
   const handleNext = async () => {
     if (selectedOption === null || !currentQuestion || isSubmitting) return;
 
-    const letters = ['A', 'B', 'C', 'D'];
     const selectedLetter = letters[selectedOption];
     persistAnswer(currentQuestion.id, selectedLetter);
 
@@ -77,7 +89,11 @@ export default function DiagnosticQuestion() {
       const res = await Onboarding.submitDiagnostic({ answers });
       localStorage.setItem('beacon_diagnostic_result', JSON.stringify(res?.data || res));
 
-      await Onboarding.complete();
+      try {
+        await Onboarding.complete();
+      } catch (_) {
+        // Don't block the flow if the completion call fails
+      }
       localStorage.removeItem('beacon_diagnostic_answers');
       navigate('/onboarding/analyzing');
     } catch (e) {
@@ -113,16 +129,27 @@ export default function DiagnosticQuestion() {
         </div>
 
         {/* Question */}
-        <h2 className="font-[var(--font-syne)] font-bold text-2xl text-[#0C4A6E] dark:text-[#F0F9FF] leading-snug mb-8">
-          {currentQuestion?.question_text}
-        </h2>
+        {imageUrl && (
+          <div className="w-full mb-6 rounded-2xl overflow-hidden border-2 border-sky-100 dark:border-sky-900/40 shadow-sm relative bg-white flex justify-center p-2">
+            <img src={imageUrl} alt="Question figure" className="w-full h-auto object-contain max-h-56" />
+          </div>
+        )}
+
+        <div className="font-[var(--font-jakarta)] text-lg font-medium leading-relaxed text-[#0C4A6E] dark:text-[#F0F9FF] mb-8">
+          <QuestionTextFormatter text={currentQuestion?.question_text} />
+        </div>
 
         {/* Options */}
         <div className="flex flex-col gap-3 flex-1 overflow-y-auto pb-24">
           {currentOptions.map((option, index) => (
             <button
               key={index}
-              onClick={() => setSelectedOption(index)}
+              onClick={() => {
+                setSelectedOption(index);
+                if (currentQuestion?.id) {
+                  persistAnswer(currentQuestion.id, letters[index]);
+                }
+              }}
               className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
                 selectedOption === index
                   ? 'border-[#0284C7] dark:border-[#38BDF8] bg-[#E0F2FE] dark:bg-[#111D2E] shadow-sm'
@@ -157,4 +184,3 @@ export default function DiagnosticQuestion() {
     </OnboardingLayout>
   );
 }
-

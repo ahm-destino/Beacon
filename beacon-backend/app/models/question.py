@@ -87,3 +87,42 @@ class QuestionReport(db.Model):
     description = db.Column(db.Text)
     is_resolved = db.Column(db.Boolean, default=False)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class QuestionOptionExplanation(db.Model):
+    __tablename__ = 'question_option_explanations'
+
+    id               = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    question_id      = db.Column(UUID(as_uuid=True), db.ForeignKey('questions.id'), nullable=False, index=True)
+    selected_option  = db.Column(db.String(1), nullable=False)
+    correct_option   = db.Column(db.String(1), nullable=False)
+    option_text      = db.Column(db.Text)
+    explanation_text = db.Column(db.Text, nullable=False)
+    options_hash     = db.Column(db.String(64), nullable=False)
+    model_name       = db.Column(db.String(100))
+    created_by       = db.Column(db.String(20), default='ai')
+    use_count        = db.Column(db.Integer, default=0)
+    last_used_at     = db.Column(db.DateTime)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'question_id', 'selected_option', 'options_hash',
+            name='uq_question_option_explanations'
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'question_id': str(self.question_id),
+            'selected_option': self.selected_option,
+            'correct_option': self.correct_option,
+            'explanation_text': self.explanation_text,
+            'options_hash': self.options_hash,
+            'model_name': self.model_name,
+            'created_by': self.created_by,
+            'use_count': self.use_count,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

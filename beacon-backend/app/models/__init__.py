@@ -1,5 +1,5 @@
 from .user import User
-from .question import Question, QuestionReport
+from .question import Question, QuestionReport, QuestionOptionExplanation
 from .session import PracticeSession, SessionAnswer, Bookmark
 from .streak import Streak, StreakHistory, QuestionState
 from .conversation import Conversation, Message
@@ -15,7 +15,7 @@ from .literature import LiteratureText, LiteratureChapter, UserLiteratureProgres
 from .tutor import Tutor, TutorReview
 
 __all__ = [
-    'User', 'Question', 'QuestionReport',
+    'User', 'Question', 'QuestionReport', 'QuestionOptionExplanation',
     'PracticeSession', 'SessionAnswer', 'Bookmark',
     'Streak', 'StreakHistory', 'QuestionState',
     'Conversation', 'Message',

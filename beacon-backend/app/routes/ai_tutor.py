@@ -799,7 +799,9 @@ def stream_concept_explain(concept_id):
     level_prompts = {
         'basic': f"""Explain {concept} simply.
 5 sentences max. Plain language. No jargon.
-End with one Nigerian everyday example.""",
+If the concept is not a calculation, treat "steps" as 2-3 key reasoning points in order.
+End with one Nigerian everyday example.
+Finish with a separate line starting with: Answer: <one-sentence takeaway>.""",
 
         'normal': f"""Explain {concept} for a Nigerian JAMB/WAEC student.
 
@@ -808,7 +810,7 @@ Structure:
 [Simple 2-sentence definition]
 
 ## How it works
-[3-5 numbered steps]
+[3-5 numbered steps. If the concept is not a calculation, use steps as key reasoning points in order.]
 
 ## Nigerian Example
 [Relatable Nigerian context]
@@ -816,7 +818,8 @@ Structure:
 ## Exam Tip
 [How JAMB/WAEC tests this]
 
-Use **bold** for all key terms.""",
+Use **bold** for all key terms.
+Finish with a separate line starting with: Answer: <one-sentence takeaway>.""",
 
         'deep': f"""Give a COMPREHENSIVE explanation of {concept}
 for a Nigerian student preparing for {user.primary_exam or 'JAMB'}.
@@ -828,7 +831,7 @@ for a Nigerian student preparing for {user.primary_exam or 'JAMB'}.
 [Deep relatable Nigerian example]
 
 ## 3. The Full Mechanism
-[Detailed step-by-step]
+[Detailed step-by-step. If the concept is not a calculation, use steps as ordered reasoning points.]
 
 ## 4. Technical Definition
 [Formal definition + terminology]
@@ -845,7 +848,8 @@ for a Nigerian student preparing for {user.primary_exam or 'JAMB'}.
 ## 8. Memory Trick
 [How to never forget this]
 
-Use **bold** for ALL key terms."""
+Use **bold** for ALL key terms.
+Finish with a separate line starting with: Answer: <one-sentence takeaway>."""
     }
     
     prompt = level_prompts.get(level, level_prompts['normal'])

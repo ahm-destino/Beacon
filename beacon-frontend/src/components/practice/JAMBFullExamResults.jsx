@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, XCircle, Home } from 'lucide-react';
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
+import FormattedExplanation, { buildCopyText } from '../shared/FormattedExplanation';
 
 function OptionPill({ letter, children, variant }) {
   const cls =
@@ -51,7 +52,19 @@ export default function JAMBFullExamResults() {
   const activeQuestion = flatQuestions[activeQIndex] || null;
   const selectedLetter = activeQuestion ? answersById[activeQuestion.id] : null;
   const isCorrect = activeQuestion ? selectedLetter === activeQuestion.correctAnswer : false;
+
+  const toVisualLetter = (originalLetter) => {
+    if (!activeQuestion || !originalLetter) return originalLetter;
+    if (!activeQuestion.optionMapping) return originalLetter;
+    const idx = activeQuestion.optionMapping.indexOf(originalLetter);
+    if (idx === -1) return originalLetter;
+    return ['A', 'B', 'C', 'D'][idx];
+  };
+
+  const selectedVisual = selectedLetter ? toVisualLetter(selectedLetter) : null;
+  const correctVisual = activeQuestion ? toVisualLetter(activeQuestion.correctAnswer) : null;
   const { bookmarkIds, updateBookmarkId } = useBookmarkIds();
+  const [copiedExplanation, setCopiedExplanation] = useState(false);
 
   const subjectSummary = useMemo(() => {
     return sections.map((sec) => {
@@ -85,6 +98,20 @@ export default function JAMBFullExamResults() {
   const answerPoints = pointsSummary?.answerPoints ?? 0;
   const speedBonus = pointsSummary?.speedBonus ?? 0;
   const streakBonus = pointsSummary?.streakBonus ?? 0;
+
+  const handleCopyExplanation = async () => {
+    const raw = activeQuestion?.explanation || '';
+    if (!raw) return;
+    const { text } = buildCopyText(raw);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedExplanation(true);
+      setTimeout(() => setCopiedExplanation(false), 1500);
+    } catch (_) {
+      // best effort
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F0F9FF] dark:bg-[#080C14] text-[#0C4A6E] dark:text-[#F0F9FF]">
@@ -178,8 +205,8 @@ export default function JAMBFullExamResults() {
             <div className="space-y-3">
               {activeQuestion.options.map((opt, idx) => {
                 const letter = ['A', 'B', 'C', 'D'][idx];
-                const selected = selectedLetter === letter;
-                const correct = activeQuestion.correctAnswer === letter;
+                const selected = selectedVisual === letter;
+                const correct = correctVisual === letter;
                 let variant = 'neutral';
                 if (correct) variant = 'correct';
                 else if (selected && !correct) variant = 'wrong';
@@ -188,9 +215,18 @@ export default function JAMBFullExamResults() {
             </div>
 
             <div className="mt-4 bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800 rounded-2xl p-4">
-              <div className="text-xs font-bold uppercase tracking-widest text-sky-700/70">Explanation</div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold uppercase tracking-widest text-sky-700/70">Explanation</div>
+                <button
+                  onClick={handleCopyExplanation}
+                  className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                  title="Copy steps"
+                >
+                  {copiedExplanation ? 'Copied' : 'Copy steps'}
+                </button>
+              </div>
               <div className="text-sm font-medium mt-2 leading-relaxed">
-                {activeQuestion.explanation || '—'}
+                <FormattedExplanation text={activeQuestion.explanation || '—'} />
               </div>
             </div>
           </div>

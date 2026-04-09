@@ -182,6 +182,10 @@ export const Practice = {
     }
     return res;
   },
+  getOptionExplanation: (questionId, selectedOption) =>
+    api.post(`/api/practice/questions/${questionId}/explanation`, {
+      selected_option: selectedOption,
+    }),
   updateSession: (sessionId, data) => api.put(`/api/practice/sessions/${sessionId}`, data),
   completeSession: async (sessionId) => {
     const res = await api.post(`/api/practice/sessions/${sessionId}/complete`);

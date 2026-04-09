@@ -83,8 +83,8 @@ export default function DiagnosticIntro() {
               <Brain className="w-5 h-5 text-[#0284C7] dark:text-[#38BDF8]" />
             </div>
             <div>
-              <h3 className="font-bold text-[#0C4A6E] dark:text-[#F0F9FF] mb-1">Smart Adaptation</h3>
-              <p className="text-sm text-[#0369A1] dark:text-[#7DD3FC]">Questions adapt based on your answers.</p>
+              <h3 className="font-bold text-[#0C4A6E] dark:text-[#F0F9FF] mb-1">Subject-Aligned</h3>
+              <p className="text-sm text-[#0369A1] dark:text-[#7DD3FC]">Questions are pulled from the subjects you selected.</p>
             </div>
           </div>
         </div>

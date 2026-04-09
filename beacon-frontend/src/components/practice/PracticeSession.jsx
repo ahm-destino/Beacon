@@ -5,6 +5,7 @@ import { loadPracticeState, updatePracticeState } from '../../utils/practiceStat
 import { Practice, STREAK_MILESTONE_POINTS } from '../../services/api';
 import { useBookmarkIds } from '../../utils/bookmarks';
 import QuestionTextFormatter from '../shared/QuestionTextFormatter';
+import FormattedExplanation, { buildCopyText } from '../shared/FormattedExplanation';
 import BookmarkButton from '../shared/BookmarkButton';
 import JambCalculator from '../shared/JambCalculator';
 import DocumentChat from './DocumentChat';
@@ -80,6 +81,8 @@ export default function PracticeSession({ forcedMode }) {
   const [isFinishing, setIsFinishing] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [feedbackExpanded, setFeedbackExpanded] = useState(true);
+  const [copiedExplanation, setCopiedExplanation] = useState(false);
+  const [optionExplanations, setOptionExplanations] = useState({});
   // Mimo-style +XP popup
   const [xpPopup, setXpPopup] = useState(null); // { amount, key }
 
@@ -119,6 +122,20 @@ export default function PracticeSession({ forcedMode }) {
       }
     } catch (_) {
       setMessages(prev => [...prev, { role: 'assistant', text: "Error: Could not reach the AI tutor." }]);
+    }
+  };
+
+  const handleCopyExplanation = async () => {
+    const raw = optionExplanations[currentQuestion?.id] || currentQuestion?.explanation || '';
+    if (!raw) return;
+    const { text } = buildCopyText(raw);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedExplanation(true);
+      setTimeout(() => setCopiedExplanation(false), 1500);
+    } catch (_) {
+      // best effort
     }
   };
 
@@ -330,6 +347,18 @@ export default function PracticeSession({ forcedMode }) {
       // Offline/fallback popup
       setXpPopup({ amount: 10, key: Date.now() });
       setTimeout(() => setXpPopup(null), 1200);
+    }
+
+    if (mode === 'practice' && currentQuestion?.id) {
+      try {
+        const res = await Practice.getOptionExplanation(currentQuestion.id, originalLetter);
+        const explanation = res?.data?.explanation;
+        if (explanation) {
+          setOptionExplanations(prev => ({ ...prev, [currentQuestion.id]: explanation }));
+        }
+      } catch (_) {
+        // Best-effort fallback to existing explanation
+      }
     }
   };
 
@@ -580,10 +609,20 @@ export default function PracticeSession({ forcedMode }) {
                 </div>
               </div>
               
-              <div className={`transition-all duration-300 overflow-hidden ${feedbackExpanded ? 'opacity-100 max-h-[400px]' : 'opacity-0 max-h-0'}`}>
-                <p className="text-sm font-[var(--font-jakarta)] text-[#0C4A6E] dark:text-[#F0F9FF]/70 leading-relaxed mb-4">
-                  {currentQuestion.explanation}
-                </p>
+              <div className={`transition-all duration-300 overflow-y-auto overflow-x-hidden pr-1 ${feedbackExpanded ? 'opacity-100 max-h-[400px]' : 'opacity-0 max-h-0'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-sky-500">Explanation</div>
+                  <button
+                    onClick={handleCopyExplanation}
+                    className="text-[10px] font-bold uppercase tracking-widest text-sky-500 hover:text-sky-600"
+                    title="Copy steps"
+                  >
+                    {copiedExplanation ? 'Copied' : 'Copy steps'}
+                  </button>
+                </div>
+                <div className="text-sm font-[var(--font-jakarta)] text-[#0C4A6E] dark:text-[#F0F9FF]/70 leading-relaxed mb-4">
+                  <FormattedExplanation text={optionExplanations[currentQuestion?.id] || currentQuestion.explanation} />
+                </div>
                 {currentQuestion.referenceLink && (
                   <a 
                     href={currentQuestion.referenceLink} 
