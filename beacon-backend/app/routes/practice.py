@@ -651,39 +651,37 @@ def get_option_explanation(question_id):
         return error_response('selected_option must be A, B, C, or D', 422)
 
     question = Question.query.get_or_404(question_id)
-    aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
-    if not is_question_valid(question):
-        if aggressive and is_question_structurally_valid(question):
-            ai_result = _resolve_correct_answer_with_ai(question)
-            if ai_result and ai_result.get('correct_answer') in ['A', 'B', 'C', 'D']:
-                question.correct_answer = ai_result.get('correct_answer')
-                if ai_result.get('explanation'):
-                    question.explanation = ai_result.get('explanation')
-                try:
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
+    # ── MASTER VERIFICATION STEP ─────────────────────────────────────
+    # We solve the question independently to catch DB corruption.
+    verification = AIService.verify_correct_answer(question)
+    db_correct = question.correct_answer
+    
+    if verification:
+        ai_correct = verification.get('correct_answer')
+        confidence = verification.get('confidence') or 0
+        
+        if ai_correct != db_correct:
+            # High confidence discrepancy? Auto-correct the DB.
+            if confidence >= 0.95:
+                question.correct_answer = ai_correct
+                if verification.get('explanation'):
+                    question.explanation = verification.get('explanation')
+                db.session.commit()
+                # Refresh our local correct_option variable
+                correct_option = ai_correct
             else:
+                # Discrepancy detected but confidence is low? Quarantine it.
+                quarantine_questions([question], reason='ai_discrepancy_detected')
+                db.session.commit()
                 return success_response({
-                    'explanation': 'This question has a data issue and could not be verified yet.',
+                    'explanation': 'This question has been flagged for a data quality review. Please skip it for now.',
                     'cached': False,
                     'selected_option': selected_option,
                     'correct_option': None,
                     'data_issue': True,
+                    'flagged_reason': 'ai_discrepancy'
                 })
-        else:
-            quarantine_questions([question], reason='invalid_question')
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            return success_response({
-                'explanation': 'This question has a data issue and has been flagged for review. Please skip it for now.',
-                'cached': False,
-                'selected_option': selected_option,
-                'correct_option': None,
-                'data_issue': True,
-            })
+
     options_hash = build_options_hash(question)
 
     existing = QuestionOptionExplanation.query.filter_by(
@@ -788,6 +786,7 @@ Answer: Option {correct_option} — <short reason>.
             'cached': False,
             'selected_option': selected_option,
             'correct_option': correct_option,
+            'verified': True
         })
     except IntegrityError:
         db.session.rollback()
