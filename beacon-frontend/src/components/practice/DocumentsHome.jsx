@@ -71,7 +71,7 @@ export default function DocumentsHome() {
         }
       } catch (err) {
         // If the document is not found (404), stop polling and remove it from view
-        if (err.response?.status === 404) {
+        if (err.status === 404) {
           clearInterval(interval);
           delete pollingRef.current[docId];
           setDocs((prev) => prev.filter((d) => d.id !== docId));
@@ -168,8 +168,14 @@ export default function DocumentsHome() {
       await api.delete(`/api/documents/${docId}`);
       setDocs((prev) => prev.filter((d) => d.id !== docId));
       toast.success('Document deleted');
-    } catch (_) {
-      toast.error('Failed to delete document');
+    } catch (err) {
+      if (err.status === 404) {
+        // Already gone, just remove from view
+        setDocs((prev) => prev.filter((d) => d.id !== docId));
+        toast.info('Document no longer exists');
+      } else {
+        toast.error('Failed to delete document');
+      }
     }
   };
 
