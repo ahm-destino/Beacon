@@ -9,23 +9,9 @@ from datetime import datetime
 from groq import Groq
 from ..extensions import db
 
-# ─── Embedding model singleton ────────────────────────────────────────────────
-# We load this ONCE when the server starts. It uses the free local model
-# 'all-MiniLM-L6-v2' which converts text → a 384-number vector.
-# No API key required, runs completely offline.
-_embedding_model = None
-
-def get_embedding_model():
-    """Lazy-load the sentence transformer model. Downloads ~90MB on first run."""
-    global _embedding_model
-    if _embedding_model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        except Exception as e:
-            print(f'[RAG] Warning: Could not load embedding model: {e}')
-            _embedding_model = None
-    return _embedding_model
+# ─── Embedding model singleton (DISABLED) ─────────────────────────────────────
+# We moved to Gemini Cloud Embeddings to prevent OOM crashes on Render.
+# The local 'all-MiniLM-L6-v2' model required too much RAM (torch).
 
 
 GROQ_MODEL_LOCKED = 'llama-3.1-8b-instant'
@@ -266,6 +252,34 @@ class AIService:
             return key
 
     @classmethod
+    def _get_gemini_embedding(cls, text):
+        """Fetch 384-dimensional embedding from Gemini API."""
+        keys = cls._get_gemini_keys()
+        if not keys:
+            return None
+        
+        # We rotate keys similar to chat
+        key = cls._next_gemini_key(keys)
+        url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+        
+        payload = {
+            "model": "models/text-embedding-004",
+            "content": {
+                "parts": [{"text": text}]
+            },
+            "outputDimensionality": 384 # Matches previous all-MiniLM model for DB compatibility
+        }
+        headers = {'x-goog-api-key': key, 'Content-Type': 'application/json'}
+        
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                return resp.json().get('embedding', {}).get('values')
+            return None
+        except Exception:
+            return None
+
+    @classmethod
     def _next_gemini_model(cls, models):
         with cls._gemini_model_lock:
             if not models:
@@ -422,16 +436,12 @@ class AIService:
         """
         Convert a string of text into a list of 384 numbers (a vector).
         
-        Think of it like this: the model reads the text and produces a
-        'fingerprint' of its meaning. Similar texts → similar fingerprints.
-        This is what allows semantic search (finding similar questions
-        even when the exact words don't match).
+        Now uses Gemini Cloud API to avoid server OOM crashes.
         """
-        model = get_embedding_model()
-        if model is None:
+        if not text:
             return None
-        embedding = model.encode(text, normalize_embeddings=True)
-        return embedding.tolist()
+        embedding = cls._get_gemini_embedding(text)
+        return embedding
 
     @classmethod
     def search_similar_questions(cls, query_text, limit=5, subject=None, exam_type='JAMB'):
@@ -699,13 +709,9 @@ Return ONLY a JSON array. No markdown. No other text."""
 
         start = time.time()
         
-        # Load embedding model lazily inside worker
         try:
-            from sentence_transformers import SentenceTransformer
-            embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-        except ImportError:
+            # Note: We no longer use local sentence-transformers to save RAM
             embed_model = None
-            current_app.logger.warning("sentence-transformers not installed. Embeddings disabled.")
 
         try:
             # 1. Chunking strategy
@@ -771,13 +777,8 @@ Return ONLY a JSON array. No markdown. No other text."""
             if not pending_sections:
                 return False
 
-            # Lazy load embedding model
-            embed_model = None
-            try:
-                from sentence_transformers import SentenceTransformer
-                embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-            except ImportError:
-                pass
+            # Note: We now use Gemini Cloud embeddings via get_embedding()
+            # to prevent OOM (Out of Memory) crashes on Render.
 
             processed_count = 0
             for sec in pending_sections:
@@ -831,10 +832,10 @@ Return exactly valid JSON matching this structure:
                     sec.quiz_questions = result.get('quiz_questions', [])
                     sec.status = 'complete'
 
-                    # Embedding
-                    if embed_model:
-                        emb = embed_model.encode([sec.content_text], normalize_embeddings=True)[0]
-                        sec.embedding = json.dumps(emb.tolist())
+                    # Generate vector embedding for semantic search (RAG)
+                    emb = cls.get_embedding(sec.content_text)
+                    if emb:
+                        sec.embedding = json.dumps(emb)
                     
                     processed_count += 1
                     db.session.commit()
