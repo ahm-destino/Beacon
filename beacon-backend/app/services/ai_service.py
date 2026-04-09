@@ -243,6 +243,13 @@ class AIService:
         return time.time() < until
 
     @classmethod
+    def _cosine_similarity(cls, v1, v2):
+        """Standard dot product for normalized vectors (cosine similarity)."""
+        if not v1 or not v2 or len(v1) != len(v2):
+            return 0
+        return sum(a * b for a, b in zip(v1, v2))
+
+    @classmethod
     def _next_gemini_key(cls, keys):
         with cls._gemini_key_lock:
             if not keys:
@@ -896,8 +903,7 @@ Return exactly valid JSON matching this structure:
         provider = os.getenv('AI_ANSWER_PROVIDER', 'groq').strip().lower()
         use_search = os.getenv('GEMINI_USE_SEARCH', '').strip().lower() in ['1', 'true', 'yes']
 
-        prompt = f"""You are verifying a multiple-choice question.
-Return ONLY valid JSON with keys: correct_answer, confidence, brief_explanation.
+        prompt = f"""You are verifying a multiple-choice question. USE GOOGLE SEARCH to verify scientific or factual accuracy.
 
 Question: {question.question_text}
 Options:
@@ -907,9 +913,9 @@ C) {question.option_c}
 D) {question.option_d}
 
 Rules:
-- correct_answer must be exactly one of: A, B, C, D
-- confidence must be a number between 0 and 1
-- brief_explanation should be 1-2 sentences
+1. Search the web to find the absolute truth for this question.
+2. Provide the 'correct_answer_text' found in your research (e.g. "Nitrous Oxide").
+3. Return ONLY valid JSON with keys: correct_answer_text, confidence, brief_explanation.
 """
         try:
             if provider == 'gemini':
@@ -953,19 +959,49 @@ Rules:
                     return None
                 payload = json.loads(match.group(0))
 
-            correct = (payload.get('correct_answer') or '').strip().upper()
-            if correct not in ['A', 'B', 'C', 'D']:
+            ans_text = (payload.get('correct_answer_text') or '').strip()
+            if not ans_text:
+                return None
+
+            # ── SEMANTIC MATCHING ─────────────────────────────────────────────
+            # We match the AI's discovered text against the 4 options in DB.
+            options = {
+                'A': question.option_a,
+                'B': question.option_b,
+                'C': question.option_c,
+                'D': question.option_d
+            }
+            
+            ans_vector = cls.get_embedding(ans_text)
+            if not ans_vector:
+                return None
+                
+            best_score = -1.0
+            best_label = None
+            
+            for label, opt_text in options.items():
+                if not opt_text: continue
+                opt_vector = cls.get_embedding(opt_text)
+                if not opt_vector: continue
+                
+                score = cls._cosine_similarity(ans_vector, opt_vector)
+                if score > best_score:
+                    best_score = score
+                    best_label = label
+            
+            # If the best match is weak (< 75%), we reject everything.
+            if best_score < 0.75:
                 return None
 
             confidence = payload.get('confidence')
             try:
-                confidence = float(confidence) if confidence is not None else None
+                confidence = float(confidence) if confidence is not None else best_score
             except Exception:
-                confidence = None
+                confidence = best_score
 
             explanation = (payload.get('brief_explanation') or '').strip()
             return {
-                'correct_answer': correct,
+                'correct_answer': best_label,
                 'confidence': confidence,
                 'explanation': explanation,
                 'model_name': model_name,
