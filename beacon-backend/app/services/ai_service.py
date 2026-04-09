@@ -839,7 +839,14 @@ Return exactly valid JSON matching this structure:
                     sec.topic = sanitize_name(result.get('topic'), sec.topic or doc.subject or "Knowledge Nugget")
                     sec.subtopic = sanitize_name(result.get('subtopic'), f"Section {sec.order_index + 1}")
                     sec.key_concepts = result.get('key_concepts', [])
-                    sec.summary = result.get('summary', '')
+                    
+                    # Fix: Handle dict summary by stringifying it for the Text column
+                    summary_obj = result.get('summary', '')
+                    if isinstance(summary_obj, (dict, list)):
+                        sec.summary = json.dumps(summary_obj)
+                    else:
+                        sec.summary = str(summary_obj)
+
                     sec.flashcards = result.get('flashcards', [])
                     sec.quiz_questions = result.get('quiz_questions', [])
                     sec.status = 'complete'
