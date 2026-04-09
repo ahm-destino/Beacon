@@ -16,7 +16,7 @@ services:
       python add_pgvector_extension.py
       flask db upgrade
       
-      # Auto-seed only if database is empty (checked inside the script)
+      # Auto-seed only if database is empty (checked inside script)
       python seed_from_json.py
       
       bash start.sh
@@ -45,17 +45,17 @@ services:
       - key: FLASK_DEBUG
         value: "0"
       
-      # Security & Auth
+      # Security & Auth (Render generates these once)
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY
         generateValue: true
       
-      # AI Services
+      # AI Services (User provides these manually)
       - key: GEMINI_API_KEYS
         sync: false
       - key: GEMINI_MODELS
-        value: "gemini-2.1-flash,gemini-2.0-flash,gemini-1.5-flash"
+        sync: false # User can specify models here if they want
       - key: GROQ_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -63,9 +63,9 @@ services:
       - key: HF_TOKEN
         sync: false
       - key: AI_ANSWER_PROVIDER
-        value: "gemini"
+        sync: false
       
-      # 3rd Party Integrations
+      # 3rd Party Integrations (User provides these manually)
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
@@ -73,13 +73,13 @@ services:
       - key: SENDGRID_API_KEY
         sync: false
       - key: FROM_EMAIL
-        value: "hello@beacon.ng"
+        sync: false
       - key: TERMII_API_KEY
         sync: false
       - key: TERMII_SENDER_ID
-        value: "Beacon"
+        sync: false
       
-      # AWS / Storage
+      # AWS / Storage (User provides these manually)
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
@@ -87,21 +87,21 @@ services:
       - key: AWS_S3_BUCKET
         sync: false
       - key: AWS_REGION
-        value: "eu-west-1"
+        sync: false
 
-      # Platform Config (Update manually after first deployment)
+      # Platform Config (User provides these manually)
       - key: FRONTEND_URL
         sync: false
       - key: CORS_ORIGINS
         sync: false
 
   # 2. Frontend Static Site Service (React/Vite)
-  - type: static
+  - type: web              # Corrected from 'static'
     name: beacon-frontend
-    env: static
+    runtime: static        # Corrected from 'env: static'
     rootDir: beacon-frontend
     buildCommand: npm install && npm run build
-    publishDir: dist
+    staticPublishPath: dist # Corrected from 'publishDir'
     headers:
       - path: /*
         name: Cache-Control
