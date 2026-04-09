@@ -13,12 +13,16 @@ services:
       pip install -r requirements.txt
     startCommand: |
       # Essential setup on every start
-      python add_pgvector_extension.py
+      # 1. Create/Update tables first
       flask db upgrade
       
-      # Auto-seed only if database is empty (checked inside script)
+      # 2. Enable pgvector and add embedding column (requires table to exist)
+      python add_pgvector_extension.py
+      
+      # 3. Auto-seed only if database is empty (checked inside script)
       python seed_from_json.py
       
+      # 4. Start the servers
       bash start.sh
     envVars:
       - key: PYTHON_VERSION
@@ -55,7 +59,7 @@ services:
       - key: GEMINI_API_KEYS
         sync: false
       - key: GEMINI_MODELS
-        sync: false # User can specify models here if they want
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -96,12 +100,12 @@ services:
         sync: false
 
   # 2. Frontend Static Site Service (React/Vite)
-  - type: web              # Corrected from 'static'
+  - type: web
     name: beacon-frontend
-    runtime: static        # Corrected from 'env: static'
+    runtime: static
     rootDir: beacon-frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: dist # Corrected from 'publishDir'
+    staticPublishPath: dist
     headers:
       - path: /*
         name: Cache-Control
