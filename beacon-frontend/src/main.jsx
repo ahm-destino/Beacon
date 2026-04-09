@@ -295,15 +295,15 @@ createRoot(document.getElementById('root')).render(
         <Route path="/achievement" element={<AchievementPopup />} />
 
         {/* Admin */}
-        <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-        <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
-        <Route path="/admin/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
-        <Route path="/admin/questions" element={<AdminGuard><AdminQuestions /></AdminGuard>} />
-        <Route path="/admin/reports" element={<AdminGuard><AdminReports /></AdminGuard>} />
-        <Route path="/admin/ai-corrections" element={<AdminGuard><AdminAICorrections /></AdminGuard>} />
-        <Route path="/admin/analytics" element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
-        <Route path="/admin/health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
-        <Route path="/admin/audit" element={<AdminGuard><AdminAudit /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/questions" element={<AdminGuard><AdminQuestions /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/reports" element={<AdminGuard><AdminReports /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/ai-corrections" element={<AdminGuard><AdminAICorrections /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/analytics" element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
+        <Route path="/beacon-internal-portal-77/audit" element={<AdminGuard><AdminAudit /></AdminGuard>} />
 
         <Route path="/auth/signup" element={<SignUp />} />
         <Route path="/auth/signin" element={<SignIn />} />
