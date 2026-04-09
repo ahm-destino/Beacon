@@ -719,8 +719,6 @@ Return ONLY a JSON array. No markdown. No other text."""
         try:
             # Note: We no longer use local sentence-transformers to save RAM
             embed_model = None
-
-        try:
             # 1. Chunking strategy
             # We break into chunks of ~600 words (rough topic size)
             words = extracted_text.split()
