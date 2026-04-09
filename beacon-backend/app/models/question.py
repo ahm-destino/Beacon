@@ -86,7 +86,24 @@ class QuestionReport(db.Model):
     reason      = db.Column(db.String(50))  # wrong_answer, typo, outdated, etc.
     description = db.Column(db.Text)
     is_resolved = db.Column(db.Boolean, default=False)
+    resolved_by = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'))
+    resolved_at = db.Column(db.DateTime)
+    resolution_note = db.Column(db.Text)
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'question_id': str(self.question_id) if self.question_id else None,
+            'user_id': str(self.user_id) if self.user_id else None,
+            'reason': self.reason,
+            'description': self.description,
+            'is_resolved': self.is_resolved,
+            'resolved_by': str(self.resolved_by) if self.resolved_by else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'resolution_note': self.resolution_note,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 class QuestionOptionExplanation(db.Model):
@@ -142,6 +159,10 @@ class QuestionAnswerVerification(db.Model):
     use_count         = db.Column(db.Integer, default=0)
     last_used_at      = db.Column(db.DateTime)
     created_at        = db.Column(db.DateTime, default=datetime.utcnow)
+    review_status     = db.Column(db.String(20), default='pending')
+    reviewed_by       = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'))
+    reviewed_at       = db.Column(db.DateTime)
+    review_note       = db.Column(db.Text)
 
     __table_args__ = (
         db.UniqueConstraint(
@@ -149,3 +170,22 @@ class QuestionAnswerVerification(db.Model):
             name='uq_question_answer_verifications'
         ),
     )
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'question_id': str(self.question_id),
+            'options_hash': self.options_hash,
+            'ai_correct_answer': self.ai_correct_answer,
+            'confidence': self.confidence,
+            'explanation_text': self.explanation_text,
+            'model_name': self.model_name,
+            'created_by': self.created_by,
+            'use_count': self.use_count,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'review_status': self.review_status,
+            'reviewed_by': str(self.reviewed_by) if self.reviewed_by else None,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'review_note': self.review_note,
+        }

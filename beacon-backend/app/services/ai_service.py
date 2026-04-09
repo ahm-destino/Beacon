@@ -842,7 +842,7 @@ Return exactly valid JSON matching this structure:
                 import threading
                 def schedule_next():
                     import time
-                    time.sleep(60) # COOLDOWN
+                    time.sleep(5) # Reduced COOLDOWN from 60s to 5s for faster chunking
                     with app.app_context():
                         cls._process_document_batch(document_id, batch_size)
                 

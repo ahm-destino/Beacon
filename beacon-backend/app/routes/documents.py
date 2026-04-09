@@ -31,6 +31,37 @@ def start_document_processing(doc_id):
     threading.Thread(target=run_processing, daemon=True).start()
 
 
+def _section_payload(section, include_content=False):
+    data = section.to_dict()
+    if not include_content:
+        data.pop('content_text', None)
+    return data
+
+
+def _build_document_payload(doc, sections='complete', include_content=False, limit=None):
+    from ..models import DocumentSection
+
+    data = doc.to_dict(full=False)
+
+    sections = (sections or 'complete').lower()
+    if sections != 'none':
+        q = DocumentSection.query.filter_by(document_id=doc.id)
+        if sections == 'complete':
+            q = q.filter_by(status='complete')
+        elif sections == 'pending':
+            q = q.filter_by(status='pending')
+        q = q.order_by(DocumentSection.order_index)
+        if limit:
+            q = q.limit(limit)
+        rows = q.all()
+        data['sections'] = [_section_payload(s, include_content=include_content) for s in rows]
+
+    data['pending_count'] = DocumentSection.query.filter_by(document_id=doc.id, status='pending').count()
+    data['completed_sections'] = DocumentSection.query.filter_by(document_id=doc.id, status='complete').count()
+    data['total_sections'] = DocumentSection.query.filter_by(document_id=doc.id).count()
+    return data
+
+
 @documents_bp.route('', methods=['GET'])
 @jwt_required()
 def get_documents():

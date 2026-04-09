@@ -256,6 +256,60 @@ export const Analytics = {
   heatmap: () => api.get('/api/analytics/heatmap'),
 };
 
+export const Admin = {
+  dashboard: () => api.get('/api/admin/dashboard'),
+  listUsers: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/users${q ? `?${q}` : ''}`);
+  },
+  getUser: (id) => api.get(`/api/admin/users/${id}`),
+  updateUser: (id, data) => api.put(`/api/admin/users/${id}`, data),
+  getUserStats: (id) => api.get(`/api/admin/users/${id}/stats`),
+  getUserSessions: (id, params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/users/${id}/sessions${q ? `?${q}` : ''}`);
+  },
+  banUser: (id) => api.post(`/api/admin/users/${id}/ban`, {}),
+  unbanUser: (id) => api.post(`/api/admin/users/${id}/unban`, {}),
+  updateSubscription: (id, data) => api.put(`/api/admin/users/${id}/subscription`, data),
+  adjustPoints: (id, data) => api.post(`/api/admin/users/${id}/points`, data),
+
+  listQuestions: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/questions${q ? `?${q}` : ''}`);
+  },
+  updateQuestion: (id, data) => api.put(`/api/admin/questions/${id}`, data),
+  approveQuestion: (id) => api.post(`/api/admin/questions/${id}/approve`, {}),
+  rejectQuestion: (id) => api.post(`/api/admin/questions/${id}/reject`, {}),
+
+  listReports: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/reports${q ? `?${q}` : ''}`);
+  },
+  resolveReport: (id, data) => api.post(`/api/admin/reports/${id}/resolve`, data),
+
+  listAICorrections: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/ai-corrections${q ? `?${q}` : ''}`);
+  },
+  approveAICorrection: (id, data) => api.post(`/api/admin/ai-corrections/${id}/approve`, data),
+  rejectAICorrection: (id, data) => api.post(`/api/admin/ai-corrections/${id}/reject`, data),
+
+  listAudit: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return api.get(`/api/admin/audit${q ? `?${q}` : ''}`);
+  },
+
+  analyticsSummary: () => api.get('/api/admin/analytics/summary'),
+  analyticsEngagement: (days = 30) => api.get(`/api/admin/analytics/engagement?days=${days}`),
+  analyticsSubjects: () => api.get('/api/admin/analytics/subjects'),
+  analyticsAI: () => api.get('/api/admin/analytics/ai-usage'),
+  analyticsSubscriptions: () => api.get('/api/admin/analytics/subscriptions'),
+
+  broadcast: (data) => api.post('/api/admin/notifications/broadcast', data),
+  systemHealth: () => api.get('/api/admin/system/health'),
+};
+
 export const Leaderboard = {
   global: (page = 1, limit = 200) =>
     api.get(`/api/leaderboard/global?page=${page}&limit=${limit}`),

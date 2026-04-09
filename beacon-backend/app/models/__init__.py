@@ -1,5 +1,6 @@
 from .user import User
 from .question import Question, QuestionReport, QuestionOptionExplanation, QuestionAnswerVerification
+from .admin import AdminAuditLog
 from .session import PracticeSession, SessionAnswer, Bookmark
 from .streak import Streak, StreakHistory, QuestionState
 from .conversation import Conversation, Message
@@ -16,6 +17,7 @@ from .tutor import Tutor, TutorReview
 
 __all__ = [
     'User', 'Question', 'QuestionReport', 'QuestionOptionExplanation', 'QuestionAnswerVerification',
+    'AdminAuditLog',
     'PracticeSession', 'SessionAnswer', 'Bookmark',
     'Streak', 'StreakHistory', 'QuestionState',
     'Conversation', 'Message',
