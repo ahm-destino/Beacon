@@ -774,13 +774,20 @@ Return ONLY a JSON array. No markdown. No other text."""
             doc = Document.query.get(document_id)
             if not doc: return False
 
+        doc = Document.query.get(document_id)
+        if not doc:
+            return False
+
+        # SINGLE LOOP PROCESSING (Stability Fix)
+        # Instead of recursive threads, we process ALL pending chunks in one go.
+        while True:
+            # Re-fetch pending sections in small sub-batches to save memory
             pending_sections = DocumentSection.query.filter_by(
-                document_id=document_id, 
-                status='pending'
-            ).order_by(DocumentSection.order_index).limit(batch_size).all()
+                document_id=document_id, status='pending'
+            ).order_by(DocumentSection.order_index).limit(3).all()
 
             if not pending_sections:
-                return False
+                break
 
             # Note: We now use Gemini Cloud embeddings via get_embedding()
             # to prevent OOM (Out of Memory) crashes on Render.
@@ -849,19 +856,21 @@ Return exactly valid JSON matching this structure:
                     sec.status = 'failed'
                     db.session.commit()
 
-            # Check if more are pending to schedule automatic next batch
-            remaining = DocumentSection.query.filter_by(document_id=document_id, status='pending').count()
-            if remaining > 0:
-                import threading
-                def schedule_next():
-                    import time
-                    time.sleep(5) # Reduced COOLDOWN from 60s to 5s for faster chunking
-                    with app.app_context():
-                        cls._process_document_batch(document_id, batch_size)
-                
-                threading.Thread(target=schedule_next, daemon=True).start()
+                # Small cooldown to prevent rate-limit bans and OOM spikes
+                time.sleep(2)
 
-            return processed_count > 0
+            # Final Cleanup: If no more pending, mark doc as complete
+            remaining = DocumentSection.query.filter_by(document_id=document_id, status='pending').count()
+            if remaining == 0:
+                doc = Document.query.get(document_id)
+                failed_count = DocumentSection.query.filter_by(document_id=document_id, status='failed').count()
+                if failed_count > 0 and failed_count == doc.page_count:
+                    doc.status = 'failed'
+                else:
+                    doc.status = 'complete'
+                db.session.commit()
+            
+            return True
 
     @classmethod
     def generate_structured_content(cls, prompt, schema_type=None, provider='groq'):

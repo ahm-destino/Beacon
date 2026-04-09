@@ -37,7 +37,9 @@ export default function DocumentsHome() {
   }, []);
 
   useEffect(() => {
-    docs.filter((d) => d.status === 'processing').forEach((d) => startPolling(d.id));
+    // Only start polling for docs that are processing/pending AND don't already have a timer
+    docs.filter((d) => (d.status === 'processing' || d.status === 'pending') && !pollingRef.current[d.id])
+        .forEach((d) => startPolling(d.id));
   }, [docs]);
 
   const loadDocuments = async () => {
@@ -70,11 +72,15 @@ export default function DocumentsHome() {
           if (doc.status === 'failed') toast.error('Document processing failed');
         }
       } catch (err) {
-        // If the document is not found (404), stop polling and remove it from view
+        // Stop polling on ANY error to prevent "Console Firestorms"
+        console.warn(`Polling failed for ${docId}:`, err);
+        clearInterval(interval);
+        delete pollingRef.current[docId];
+        
         if (err.status === 404) {
-          clearInterval(interval);
-          delete pollingRef.current[docId];
+          // If the document is not found, remove it from view
           setDocs((prev) => prev.filter((d) => d.id !== docId));
+          toast.info('Document no longer available');
         }
       }
     }, 3000);
