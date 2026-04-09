@@ -12,9 +12,13 @@ services:
     buildCommand: |
       pip install -r requirements.txt
     startCommand: |
-      # Run migrations and essential setup on every start
+      # Essential setup on every start
       python add_pgvector_extension.py
       flask db upgrade
+      
+      # Auto-seed only if database is empty (checked inside the script)
+      python seed_from_json.py
+      
       bash start.sh
     envVars:
       - key: PYTHON_VERSION
