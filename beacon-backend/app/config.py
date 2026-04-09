@@ -45,11 +45,10 @@ class Config:
     PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
     PAYSTACK_WEBHOOK_SECRET = os.getenv('PAYSTACK_WEBHOOK_SECRET')
 
-    # AWS S3
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_S3_BUCKET = os.getenv('AWS_S3_BUCKET', 'beacon-uploads')
-    AWS_REGION = os.getenv('AWS_REGION', 'eu-west-1')
+    # Cloudinary Storage
+    CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
+    CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
+    CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
 
     # Termii SMS
     TERMII_API_KEY = os.getenv('TERMII_API_KEY')

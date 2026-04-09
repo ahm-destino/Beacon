@@ -4,6 +4,7 @@ import time
 import random
 import threading
 import requests
+import io
 from datetime import datetime
 from groq import Groq
 from ..extensions import db
@@ -667,19 +668,25 @@ Return ONLY a JSON array. No markdown. No other text."""
             return
 
         extracted_text = ""
-        if doc.file_url and os.path.exists(doc.file_url):
+        if doc.file_url:
             try:
                 from PyPDF2 import PdfReader
-                reader = PdfReader(doc.file_url)
-                # Parse entire document now
-                pages = reader.pages
-                extracted = []
-                for p in pages:
-                    text = p.extract_text() or ''
-                    if text:
-                        extracted.append(text)
-                extracted_text = '\n'.join(extracted).replace('\x00', '').strip()
-                doc.page_count = len(pages)
+                # Fetch file from Cloudinary URL
+                resp = requests.get(doc.file_url, timeout=30)
+                if resp.status_code == 200:
+                    stream = io.BytesIO(resp.content)
+                    reader = PdfReader(stream)
+                    # Parse entire document now
+                    pages = reader.pages
+                    extracted = []
+                    for p in pages:
+                        text = p.extract_text() or ''
+                        if text:
+                            extracted.append(text)
+                    extracted_text = '\n'.join(extracted).replace('\x00', '').strip()
+                    doc.page_count = len(pages)
+                else:
+                    current_app.logger.error(f"Failed to fetch PDF from Cloudinary: {resp.status_code}")
             except Exception as e:
                 current_app.logger.warning(f"PDF extract failed: {e}")
                 extracted_text = ""

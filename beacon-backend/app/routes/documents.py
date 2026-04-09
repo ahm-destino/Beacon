@@ -4,6 +4,7 @@ from ..extensions import db
 from ..models import Document, PracticeSession, Question, User
 from ..utils.helpers import success_response, error_response
 from ..services.ai_service import AIService
+from ..services.cloudinary_service import CloudinaryService
 from werkzeug.utils import secure_filename
 import os
 import threading
@@ -95,23 +96,21 @@ def upload_document():
     db.session.add(doc)
     db.session.commit()
 
-    # Save locally for now (S3 can be plugged in later)
-    upload_root = os.path.abspath(os.path.join(current_app.root_path, '..', 'uploads', 'documents'))
-    os.makedirs(upload_root, exist_ok=True)
-    storage_name = f"{doc.id}.pdf"
-    storage_path = os.path.join(upload_root, storage_name)
-    file.save(storage_path)
+    # Upload to Cloudinary
+    # We use the document ID as the public_id to keep it unique and stable
+    file_url = CloudinaryService.upload_document(file, str(doc.id))
+    
+    if not file_url:
+        db.session.rollback()
+        return error_response('Failed to upload document to cloud storage', 500)
 
-    doc.file_url = storage_path
-    try:
-        doc.file_size = os.path.getsize(storage_path)
-    except Exception:
-        doc.file_size = 0
-
-    # Try to count pages if PyPDF2 is available
+    doc.file_url = file_url
+    
+    # Try to count pages if PyPDF2 is available (using the file stream before it's closed)
     try:
         from PyPDF2 import PdfReader
-        reader = PdfReader(storage_path)
+        file.seek(0)
+        reader = PdfReader(file)
         doc.page_count = len(reader.pages)
     except Exception:
         doc.page_count = None
