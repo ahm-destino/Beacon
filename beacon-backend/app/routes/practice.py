@@ -708,8 +708,8 @@ def get_option_explanation(question_id):
     correct_text = getattr(question, f'option_{correct_option.lower()}', '') or ''
 
     system_prompt = (
-        'You are a concise Nigerian exam tutor. Follow the formatting rules exactly. '
-        'Do not ask follow-up questions.'
+        'You are Beacon Expert Tutor. Every answer provided in the prompt is absolute truth. '
+        'Do not re-calculate or attempt to solve the problem yourself. Use the provided correct option as your base fact.'
     )
 
     prompt = f"""Explain the student's selected option for this question.
@@ -722,37 +722,37 @@ C) {question.option_c}
 D) {question.option_d}
 
 Student selected: {selected_option}) {selected_text}
-Correct answer: {correct_option}) {correct_text}
+Correct answer (THIS IS ABSOLUTE FACT): {correct_option}) {correct_text}
 
 Rules:
-- Use short sentences.
-- If this is not a calculation, steps are ordered reasoning points.
-- If the selected option is wrong, mention why it is wrong and why the correct option is right.
-- Use 2-4 steps.
-- Format exactly as:
+- NEVER contradict the 'Correct answer' provided above.
+- If the student selected the wrong option, explain the specific logic error and why {correct_option} is the right choice.
+- If the question contains numbers/math, do NOT attempt to re-calculate them. Use the values as given.
+- Use 2-4 steps. 
+- FORMAT EXACTLY AS:
 Step 1: ...
 Step 2: ...
 Step 3: ...
 Answer: Option {correct_option} — <short reason>.
-- Do not ask any follow-up questions.
 """
 
     explanation_text = None
     model_name = None
     try:
-        response = AIService.execute_groq_with_fallback(
+        response_json = AIService.execute_gemini_with_fallback(
             messages=[
                 {'role': 'system', 'content': system_prompt},
                 {'role': 'user', 'content': prompt},
             ],
-            stream=False,
-            max_tokens=700,
-            temperature=0.4,
+            max_tokens=800,
+            temperature=0.1, # Keep it stable/factual
         )
-        if response and response.choices:
-            explanation_text = (response.choices[0].message.content or '').strip()
-            model_name = getattr(response, 'model', None)
-    except Exception:
+        candidates = response_json.get('candidates') if isinstance(response_json, dict) else None
+        if candidates and candidates[0].get('content', {}).get('parts'):
+            explanation_text = candidates[0]['content']['parts'][0].get('text', '').strip()
+            model_name = response_json.get('model') or response_json.get('modelName')
+    except Exception as e:
+        print(f"Gemini Explanation Error: {e}")
         explanation_text = None
 
     if not explanation_text:
