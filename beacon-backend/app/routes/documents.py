@@ -416,13 +416,24 @@ Formatting Rules:
 {doc_context}
 ---------------------
 """
-    # Just run a direct execution instead of creating a full Conversation log for now, to keep it lightweight!
+    history = data.get('history', [])
+    
+    # Format messages for AI
+    ai_messages = [{'role': 'system', 'content': system_prompt}]
+    
+    # Add limited history (last 10 messages)
+    for msg in history[-10:]:
+        ai_messages.append({
+            'role': msg.get('role', 'user'),
+            'content': msg.get('text', '')
+        })
+    
+    # Add the current message
+    ai_messages.append({'role': 'user', 'content': user_message})
+
     try:
         response = AIService.execute_groq_with_fallback(
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_message}
-            ],
+            messages=ai_messages,
             stream=False,
             max_tokens=1000
         )

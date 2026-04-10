@@ -29,7 +29,8 @@ export default function DocumentChat({
     try {
       const res = await api.post(`/api/documents/${documentId}/chat`, { 
         message: userMsg,
-        explanation_level: explanationLevel
+        explanation_level: explanationLevel,
+        history: messages
       });
       if (res?.data?.answer) {
         setMessages(prev => [...prev, { role: 'assistant', text: res.data.answer }]);

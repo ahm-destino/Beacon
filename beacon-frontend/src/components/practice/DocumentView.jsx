@@ -199,7 +199,8 @@ export default function DocumentView() {
     try {
       const res = await api.post(`/api/documents/${id}/chat`, { 
         message: text,
-        explanation_level: explanationLevel 
+        explanation_level: explanationLevel,
+        history: messages
       });
       if (res?.data?.answer) {
         setMessages(prev => [...prev, { role: 'assistant', text: res.data.answer }]);
