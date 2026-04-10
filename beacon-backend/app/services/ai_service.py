@@ -987,24 +987,43 @@ Rules:
                 'D': question.option_d
             }
             
-            ans_vector = cls.get_embedding(ans_text)
-            if not ans_vector:
-                return None
-                
+            # ── HYBRID MATCHING (Literal + Semantic) ───────────────────────────
+            # 1. Direct Normalized Match (Critical for Math/Symbols)
+            def normalize(t):
+                if not t: return ""
+                # Strip labels like "A. ", "B. ", remove whitespace, lowercase
+                s = str(t).strip().lower()
+                s = re.sub(r'^[a-d]\.\s*', '', s)
+                return re.sub(r'\s+', '', s)
+
+            target = normalize(ans_text)
             best_score = -1.0
             best_label = None
-            
+            literal_match_found = False
+
             for label, opt_text in options.items():
                 if not opt_text: continue
-                opt_vector = cls.get_embedding(opt_text)
-                if not opt_vector: continue
-                
-                score = cls._cosine_similarity(ans_vector, opt_vector)
-                if score > best_score:
-                    best_score = score
+                if normalize(opt_text) == target:
                     best_label = label
-            
-            # If the best match is weak (< 75%), we reject everything.
+                    best_score = 1.0 # Perfect literal match
+                    literal_match_found = True
+                    break
+
+            # 2. Semantic Fallback (Only if literal match didn't find a 1.0 hit)
+            if not literal_match_found:
+                ans_vector = cls.get_embedding(ans_text)
+                if ans_vector:
+                    for label, opt_text in options.items():
+                        if not opt_text: continue
+                        opt_vector = cls.get_embedding(opt_text)
+                        if not opt_vector: continue
+                        
+                        score = cls._cosine_similarity(ans_vector, opt_vector)
+                        if score > best_score:
+                            best_score = score
+                            best_label = label
+
+            # If the best match is still weak (< 75%), we reject everything.
             if best_score < 0.75:
                 return None
 

@@ -479,10 +479,7 @@ export default function DocumentView() {
                 <div className="bg-white dark:bg-[#0D1525] p-6 lg:p-8 shrink-0 rounded-2xl border border-sky-100 dark:border-sky-900/20 shadow-sm text-[#0C4A6E] dark:text-[#F0F9FF] mt-3 md:mt-0">
                   {currentSection?.summary ? (
                     <div className="prose dark:prose-invert max-w-none prose-sm lg:prose-base space-y-6">
-                      {/* Structure the "First Nudge" content if it follows the pattern */}
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap font-[var(--font-jakarta)]">
-                        {currentSection.summary}
-                      </div>
+                      <SummaryContent summary={currentSection.summary} onExplain={handleExplainMore} sectionName={currentSection.subtopic} />
                     </div>
                   ) : (
                     <div className="text-sm text-slate-400 italic">Summary will appear once processing is complete.</div>
@@ -613,6 +610,111 @@ export default function DocumentView() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── PREMIUM STUDY GUIDE COMPONENTS ──────────────────────────────────────────
+
+function SummaryContent({ summary, onExplain, sectionName }) {
+  const data = useMemo(() => {
+    if (!summary) return null;
+    try {
+      // Try to parse if it's a JSON string
+      if (typeof summary === 'string' && (summary.startsWith('{') || summary.startsWith('['))) {
+        return JSON.parse(summary);
+      }
+      return summary; // Might already be an object
+    } catch (_) {
+      return { _legacy: summary };
+    }
+  }, [summary]);
+
+  if (!data) return null;
+
+  // Legacy fallback
+  if (data._legacy) {
+    return (
+      <div className="text-sm leading-relaxed whitespace-pre-wrap font-[var(--font-jakarta)]">
+        {data._legacy}
+      </div>
+    );
+  }
+
+  const takeaways = data["Key Takeaways"] || data.key_takeaways || [];
+  const deepDive = data["Deep Dive"] || data.deep_dive || [];
+  const glossary = data["Glossary"] || data.glossary || {};
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* 🚀 KEY TAKEAWAYS */}
+      {takeaways.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center">
+              <span className="text-lg">🚀</span>
+            </div>
+            <h3 className="font-[var(--font-syne)] font-bold text-base text-sky-600 dark:text-sky-400 uppercase tracking-wider">Key Takeaways</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {takeaways.map((item, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => onExplain(item, sectionName)}
+                className="bg-sky-50/50 dark:bg-sky-900/10 border border-sky-100/50 dark:border-sky-800/30 p-4 rounded-2xl flex gap-3 group cursor-help hover:bg-sky-100/50 transition-all"
+              >
+                <div className="w-5 h-5 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0 mt-1 text-[10px] font-black">
+                  ✓
+                </div>
+                <p className="text-sm font-[var(--font-jakarta)] font-medium leading-relaxed group-hover:text-sky-700 dark:group-hover:text-sky-300 transition-colors">
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 📖 DEEP DIVE */}
+      {deepDive.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <span className="text-lg">📖</span>
+            </div>
+            <h3 className="font-[var(--font-syne)] font-bold text-base text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Deep Dive</h3>
+          </div>
+          <div className="space-y-4">
+            {(Array.isArray(deepDive) ? deepDive : [deepDive]).map((para, idx) => (
+              <p key={idx} className="text-sm lg:text-base font-[var(--font-jakarta)] leading-relaxed text-[#0C4A6E] dark:text-[#F0F9FF]/80">
+                {para}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 📚 GLOSSARY */}
+      {Object.keys(glossary).length > 0 && (
+        <section className="bg-slate-50 dark:bg-slate-900/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <span className="text-lg">📚</span>
+            </div>
+            <h3 className="font-[var(--font-syne)] font-bold text-base text-amber-600 dark:text-amber-400 uppercase tracking-wider">Glossary</h3>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(glossary).map(([term, definition], idx) => (
+              <div key={idx} className="group cursor-help" onClick={() => onExplain(term, sectionName)}>
+                <h4 className="font-bold text-sm text-[#0C4A6E] dark:text-[#F0F9FF] group-hover:text-sky-500 transition-colors">{term}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {definition}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
