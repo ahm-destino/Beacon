@@ -784,7 +784,6 @@ def stream_concept_explain(concept_id):
     Returns SSE stream with explanation text + related questions + videos.
     """
     from flask import Response, stream_with_context
-    from urllib.parse import unquote
     import json
     
     uid = get_jwt_identity()
@@ -795,61 +794,59 @@ def stream_concept_explain(concept_id):
     subject = data.get('subject', '')
     level = data.get('level', 'normal')  # basic, normal, deep
     
-    # Level-specific prompts from FIX 9
+    # Level-specific prompts for Adaptive Tutors
     level_prompts = {
-        'basic': f"""Explain {concept} simply.
-5 sentences max. Plain language. No jargon.
-If the concept is not a calculation, treat "steps" as 2-3 key reasoning points in order.
-End with one Nigerian everyday example.
-Finish with a separate line starting with: Answer: <one-sentence takeaway>.""",
-
-        'normal': f"""Explain {concept} for a Nigerian JAMB/WAEC student.
-
+        'basic': f"""Explain {concept} in 'Beginner Mode'.
 Structure:
-## What it is
-[Simple 2-sentence definition]
+- Core Idea: [One simple sentence using a relatable analogy]
+- Why it matters: [Why a student should care]
+- Breakdown: [3 clear bullet points using plain language]
+- Everyday Example: [A relatable Nigerian context example]
 
-## How it works
-[3-5 numbered steps. If the concept is not a calculation, use steps as key reasoning points in order.]
+Rules:
+- NO jargon. NO complex math unless requested.
+- If it IS a calculation, use 3 simple 'Action Steps'.
+- If it is NOT a calculation, do NOT use 'Step 1/2/3' formatting; use descriptive bullets.
+- Finish with: Answer: <one-sentence simple takeaway>.""",
 
-## Nigerian Example
-[Relatable Nigerian context]
+        'normal': f"""Explain {concept} in 'Exam-ready Mode' for a Nigerian JAMB/WAEC student.
+Structure:
+## 🎯 Core Principle
+[Simple 2-sentence definition with **key terms** in bold]
 
-## Exam Tip
-[How JAMB/WAEC tests this]
+## 🔍 How it Works
+[Use Numbered Steps ONLY if it is a technical process or calculation. Otherwise, use a 'Mechanism Breakdown' with themed bullets.]
 
-Use **bold** for all key terms.
-Finish with a separate line starting with: Answer: <one-sentence takeaway>.""",
+## 🇳🇬 Nigerian Context
+[A relatable real-world example from Nigeria]
 
-        'deep': f"""Give a COMPREHENSIVE explanation of {concept}
-for a Nigerian student preparing for {user.primary_exam or 'JAMB'}.
+## 💡 Exam Strategy
+[How this topic typically appears in JAMB/WAEC and how to beat it]
 
-## 1. The Simple Version
-[Explain like a 10-year-old]
+Rules:
+- Use **bold** for essential vocabulary.
+- Finish with: Answer: <one-sentence academic takeaway>.""",
 
-## 2. The Nigerian Analogy
-[Deep relatable Nigerian example]
+        'deep': f"""Provide a COMPREHENSIVE 'Expert Discovery' of {concept} for a high-achieving student.
+Structure:
+## 🌟 The Simple Logic
+[Start with a brilliant analogy]
 
-## 3. The Full Mechanism
-[Detailed step-by-step. If the concept is not a calculation, use steps as ordered reasoning points.]
+## 🧬 Full Mechanism & Nuance
+[Detailed breakdown. Use professional terminology.]
 
-## 4. Technical Definition
-[Formal definition + terminology]
+## 🛠️ Technical Walkthrough
+[Detailed steps if applicable. If not a calculation, provide a 'Logical Flow Chart' in text form.]
 
-## 5. Related Concepts
-[What else connects to this]
+## ⚠️ Potential Pitfalls
+[Nuanced traps and common misconceptions]
 
-## 6. Common Mistakes
-[What students get wrong]
+## 🎓 Exam Masterclass
+[Pattern analysis of past questions on this topic]
 
-## 7. JAMB/WAEC Exam Strategy
-[Question patterns, how it's tested, tips]
-
-## 8. Memory Trick
-[How to never forget this]
-
-Use **bold** for ALL key terms.
-Finish with a separate line starting with: Answer: <one-sentence takeaway>."""
+## 🧠 Memory Anchor
+[A clever mnemonic or memory trick]
+"""
     }
     
     prompt = level_prompts.get(level, level_prompts['normal'])

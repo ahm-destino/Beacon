@@ -393,17 +393,24 @@ def chat_with_document(doc_id):
     
     doc_context = "\n\n".join(context_builder)
     
-    system_prompt = f"""You are a personal tutor helping a student study their personally uploaded document.
-Use the following extracted document text constraints to answer their questions. 
-If the document context lacks the exact answer, you may supplement it carefully with your own academic knowledge, but prioritize the document heavily!
+    explanation_level = (data.get('explanation_level') or 'normal').lower()
+    
+    level_rules = {
+        'basic': "Answer in 'Beginner Mode'. Use simple language and clear analogies. Avoid jargon. If explaining a process, use logical bullets, not robotic steps.",
+        'normal': "Answer in 'Exam-ready Mode' for JAMB/WAEC students. Define core principles clearly and provide a relatable example.",
+        'deep': "Answer in 'Expert Mode'. Provide comprehensive depth, technical nuances, and pattern analysis of how this appears in tough exams."
+    }
 
-Formatting rules:
-- Use short sections, bullets, and clear spacing.
-- When solving or simplifying a problem, write:
-  Step 1: ...
-  Step 2: ...
-  Step 3: ...
-  Answer: ...
+    system_prompt = f"""You are a personal tutor helping a student study their personally uploaded document.
+Use the following extracted document text to answer questions professionally.
+
+{level_rules.get(explanation_level, level_rules['normal'])}
+
+Formatting Rules:
+- Use **bold** for key terms.
+- For calculations/Logic: Use 'Step 1, Step 2' style.
+- For concepts: Use thematic bullet points (e.g., Mechanism, Context, Importance).
+- If the document doesn't have the answer, use your academic knowledge but mention it's supplementary.
 
 --- DOCUMENT TEXT ---
 {doc_context}

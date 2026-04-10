@@ -184,11 +184,11 @@ export default function DocumentView() {
     return document.sections.filter(s => s.status === 'pending').length;
   }, [document?.sections]);
 
-  const handleExplainMore = (concept, context = "") => {
-    const prompt = `Explain more about "${concept}" ${context ? `in the context of ${context}` : ''} at my current level (${explanationLevel}).`;
+  const handleExplainMore = (concept, sectionName) => {
+    const prompt = `Can you give me a deep masterclass explanation of "${concept}"? Specifically as it relates to ${sectionName || 'this topic'}. Explain it according to my chosen level (${explanationLevel}).`;
     
     // Switch to assistant role temporarily to show "Thinking" or just append user msg
-    setMessages(prev => [...prev, { role: 'user', text: prompt }]);
+    setMessages(prev => [...prev, { role: 'user', text: `Explain: ${concept}` }]);
     setShowChat(true);
     
     // Auto-trigger the API call for the chat
