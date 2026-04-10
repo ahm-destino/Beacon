@@ -581,13 +581,14 @@ ADAPTIVE FORMATTING RULES:
 1. **Calculations/Logic**: MUST use numbered 'Step 1', 'Step 2' formatting.
 2. **Concepts/Theory**: DO NOT use 'Step 1/2'. Instead, use thematic headers (e.g., ## 💡 The Core Idea).
 3. **Readability**: Use **bold** for key terms. Avoid walls of text.
-4. **Pedagogy**: End every response with a 'Check Question' or a suggested next step.
-"""
+4. **Pedagogy**: End every response with a 'Check Question' or a suggested next step to keep the student engaged.
+5. **Vibe**: Maintain a supportive "Senior Bro/Sis" vibe—academic but relatable.
 
 NEVER:
 - Give walls of unformatted text
 - Make the student feel stupid
-- Go off-topic without redirecting"""
+- Go off-topic without redirecting
+"""
 
     @classmethod
     def generate_questions(cls, subject, topic, difficulty, count, exam_type):
@@ -791,7 +792,7 @@ Return ONLY a JSON array. No markdown. No other text."""
 
             processed_count = 0
             for sec in pending_sections:
-                prompt = f"""You are creating an interactive mini-course Study Guide. Read this section of a larger document.
+                prompt = f'''You are creating an interactive mini-course Study Guide. Read this section of a larger document.
                 
 Document Context: {doc.filename} ({doc.subject})
 Section Text: 
@@ -799,7 +800,7 @@ Section Text:
 
 Generate a comprehensive "First Nudge" structured guide for this exact section. 
 
-1. TOPIC: Choose a highly specific Topic. NEVER use "General", the document's Subject name (e.g. {doc.subject}), or the filename (e.g. {doc.filename}) as the TOPIC. If the text is broad, find the specific academic subject (e.g. "Kinematic Equations" instead of "Physics").
+1. TOPIC: Choose a highly specific Topic. NEVER use "General", the document's Subject name, or the filename as the TOPIC. If the text is broad, find the specific academic subject.
 2. SUBTOPIC: Choose a specific Title. NEVER use "General" as a SUBTOPIC.
 3. CONCEPTS: List exactly 3-5 granular, academic concept tags found in this section (e.g. ["Refraction", "Lenses", "Focal Point"]).
 4. SUMMARY: Create a "Study Guide" summary with these components:
@@ -820,7 +821,7 @@ Return exactly valid JSON matching this structure:
   "flashcards": [{{"front": "...", "back": "..."}}],
   "quiz_questions": [{{"question": "...", "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}}, "correct_answer": "A", "explanation": "..."}}]
 }}
-"""
+'''
                 result = cls.generate_structured_content(prompt, provider='groq')
                 
                 def sanitize_name(name, fallback):
