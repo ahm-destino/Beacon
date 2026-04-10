@@ -12,14 +12,14 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/questions', label: 'Questions', icon: FileText },
-  { to: '/admin/reports', label: 'Reports', icon: Flag },
-  { to: '/admin/ai-corrections', label: 'AI Corrections', icon: Brain },
-  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/admin/health', label: 'System Health', icon: Activity },
-  { to: '/admin/audit', label: 'Audit Log', icon: ClipboardList },
+  { to: '/beacon-internal-portal-77', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/beacon-internal-portal-77/users', label: 'Users', icon: Users },
+  { to: '/beacon-internal-portal-77/questions', label: 'Questions', icon: FileText },
+  { to: '/beacon-internal-portal-77/reports', label: 'Reports', icon: Flag },
+  { to: '/beacon-internal-portal-77/ai-corrections', label: 'AI Corrections', icon: Brain },
+  { to: '/beacon-internal-portal-77/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/beacon-internal-portal-77/health', label: 'System Health', icon: Activity },
+  { to: '/beacon-internal-portal-77/audit', label: 'Audit Log', icon: ClipboardList },
 ];
 
 const NavButton = ({ to, label, icon: Icon }) => (

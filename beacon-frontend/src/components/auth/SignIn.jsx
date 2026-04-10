@@ -33,6 +33,12 @@ export default function SignIn() {
       const res = await Auth.login(payload);
       setToken(res.data.access_token);
 
+      const user = res.data.user;
+      if (user?.is_admin) {
+        navigate('/beacon-internal-portal-77');
+        return;
+      }
+
       const status = await Onboarding.getStatus();
       const onboardingCompleted = status?.data?.onboarding_completed;
 

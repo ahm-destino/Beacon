@@ -83,7 +83,7 @@ export default function AdminUsers() {
               </div>
               <Link
                 className="px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold text-center"
-                to={`/admin/users/${user.id}`}
+                to={`/beacon-internal-portal-77/users/${user.id}`}
               >
                 Manage
               </Link>
