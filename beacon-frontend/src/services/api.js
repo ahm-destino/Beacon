@@ -165,6 +165,7 @@ export const clearToken = () => localStorage.removeItem('beacon_token');
 export const isLoggedIn = () => !!getToken();
 
 // ─── Shortcut API calls ───────────────────────────────────────────────────────
+export const Auth = {
   checkSession: () => api.get('/api/auth/me'), // Basic heartbeat
   register: (data) => api.post('/api/auth/register', data),
   login: (data) => api.post('/api/auth/login', data),
