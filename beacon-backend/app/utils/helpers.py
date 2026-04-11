@@ -3,6 +3,16 @@ import string
 from datetime import datetime
 
 
+def utc_iso(dt):
+    """Return an ISO-8601 UTC string with Z suffix so browsers parse it correctly.
+    Without 'Z', browsers in UTC+1 (e.g. Nigeria) treat the timestamp as local
+    time, causing a systematic 1-hour shift in all displayed relative times.
+    """
+    if dt is None:
+        return None
+    return dt.isoformat() + 'Z'
+
+
 def generate_otp(length=6):
     """Generate a numeric OTP."""
     return ''.join(random.choices(string.digits, k=length))

@@ -1,7 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import UUID
 from ..extensions import db
+from ..utils.helpers import utc_iso
 
 
 class CommunityQuestion(db.Model):
@@ -40,7 +41,7 @@ class CommunityQuestion(db.Model):
             'views': self.views,
             'answer_count': self.answer_count,
             'is_resolved': self.is_resolved,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': utc_iso(self.created_at),
         }
 
 
@@ -68,7 +69,7 @@ class CommunityAnswer(db.Model):
             'body': self.body,
             'upvotes': self.upvotes,
             'is_best_answer': self.is_best_answer,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': utc_iso(self.created_at),
         }
 
 
@@ -85,7 +86,7 @@ class StudyBuddy(db.Model):
     user        = db.relationship('User', foreign_keys=[user_id])
     buddy       = db.relationship('User', foreign_keys=[buddy_id])
 
-    __table_args__ = (db.UniqueConstraint('user_id', 'buddy_id'),)
+    # NOTE: UniqueConstraint removed to allow multiple study buddies per user.
 
 
 class StudyBuddyMessage(db.Model):
@@ -108,7 +109,7 @@ class StudyBuddyMessage(db.Model):
             'recipient_id': str(self.recipient_id),
             'body': self.body,
             'is_read': self.is_read,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': utc_iso(self.created_at),
         }
 
 
@@ -143,6 +144,7 @@ class Challenge(db.Model):
     opponent_score          = db.Column(db.Float)
     challenger_completed_at = db.Column(db.DateTime)
     opponent_completed_at   = db.Column(db.DateTime)
+    expires_at              = db.Column(db.DateTime)  # 24h window after first completion
     winner_id               = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'))
     created_at              = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at              = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -181,6 +183,15 @@ class Challenge(db.Model):
         opponent_progress = answered_count(opponent_answers)
         total = self.question_count or 1
 
+        my_completed = (
+            self.challenger_completed_at is not None if my_role == 'challenger'
+            else self.opponent_completed_at is not None
+        )
+        opponent_completed = (
+            self.opponent_completed_at is not None if my_role == 'challenger'
+            else self.challenger_completed_at is not None
+        )
+
         return {
             'id': str(self.id),
             'subject': self.subject,
@@ -194,7 +205,10 @@ class Challenge(db.Model):
             'opponent_progress': round((opponent_progress / total) * 100),
             'challenger_score': self.challenger_score,
             'opponent_score': self.opponent_score,
+            'my_completed': my_completed,
+            'opponent_completed': opponent_completed,
             'winner_id': str(self.winner_id) if self.winner_id else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'expires_at': utc_iso(self.expires_at),
+            'created_at': utc_iso(self.created_at),
+            'updated_at': utc_iso(self.updated_at),
         }

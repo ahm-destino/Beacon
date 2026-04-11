@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from ..extensions import db
+from ..utils.helpers import utc_iso
 
 
 class Notification(db.Model):
@@ -26,7 +27,7 @@ class Notification(db.Model):
             'data': self.data,
             'is_read': self.is_read,
             'sent_via': self.sent_via or [],
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': utc_iso(self.created_at),
         }
 
 

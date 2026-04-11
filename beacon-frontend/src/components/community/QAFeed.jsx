@@ -97,9 +97,9 @@ export default function QAFeed() {
         const list = Array.isArray(payload) ? payload : [];
         const mapped = list.map(mapQuestion);
         if (cancelled) return;
-        setQuestions(mapped.length ? mapped : mockQuestions);
+        setQuestions(mapped);
       } catch (_) {
-        if (!cancelled) setQuestions(mockQuestions);
+        if (!cancelled) setQuestions([]);
       } finally {
         if (!cancelled) setLoading(false);
       }

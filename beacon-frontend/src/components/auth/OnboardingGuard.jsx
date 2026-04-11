@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Onboarding } from '../../services/api';
+import { Onboarding, isLoggedIn } from '../../services/api';
 
 /**
  * OnboardingGuard - Protects onboarding routes and redirects based on completion status
@@ -16,12 +16,18 @@ export default function OnboardingGuard({ children, requireIncomplete = false })
 
   useEffect(() => {
     const checkStatus = async () => {
+      if (!isLoggedIn()) {
+        setLoading(false);
+        return;
+      }
       try {
         const response = await Onboarding.getStatus();
         setStatus(response?.data);
       } catch (err) {
-        // If API fails, assume incomplete to be safe
-        setStatus({ onboarding_completed: false, onboarding_step: 1 });
+        // If it's a 401, handleResponse in api.js will redirect
+        if (err?.status !== 401) {
+          setStatus({ onboarding_completed: false, onboarding_step: 1 });
+        }
       } finally {
         setLoading(false);
       }
@@ -29,6 +35,10 @@ export default function OnboardingGuard({ children, requireIncomplete = false })
 
     checkStatus();
   }, []);
+
+  if (!isLoggedIn()) {
+    return <Navigate to="/auth/signin" state={{ from: location }} replace />;
+  }
 
   if (loading) {
     return (

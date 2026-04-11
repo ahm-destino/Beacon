@@ -34,20 +34,19 @@ export default function QADetail() {
 
   const mapAnswer = (a) => ({
     id: a.id,
-    text: a.body || a.text,
+    text: a.body,
     author: {
-      id: a.user_id || a.author_id || 'user',
+      id: a.user_id,
       name: a.author_name || 'Student',
       avatar: initials(a.author_name || 'Student'),
     },
-    votes: a.upvotes ?? a.votes ?? 0,
-    createdAt: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+    votes: a.upvotes || 0,
+    createdAt: a.created_at,
     is_best_answer: a.is_best_answer || false,
   });
 
   const mapQuestion = (q) => {
     const mappedAnswers = (q.answers || []).map(mapAnswer);
-    const best = mappedAnswers.find((a) => a.is_best_answer)?.id || null;
     return {
       id: q.id,
       text: q.title || q.body || 'Question',
@@ -59,83 +58,78 @@ export default function QADetail() {
       subject: q.subject,
       practice_question_id: q.practice_question_id,
       answers: mappedAnswers,
-      bestAnswerId: best,
+      bestAnswerId: q.best_answer_id || null,
+      is_resolved: q.is_resolved,
     };
   };
 
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        setIsLoading(true);
-        const res = await Community.getQuestion(id);
-        const data = res?.data;
-        if (cancelled || !data) return;
-        const mapped = mapQuestion(data);
-        setQuestionData(mapped);
-        setAnswers(mapped.answers.length ? mapped.answers : fallbackAnswers);
-        setBestAnswerId(mapped.bestAnswerId || mapped.answers[0]?.id || 'a1');
-      } catch (_) {
-        if (!cancelled && !question) setQuestionData(null);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+  const loadQuestion = async () => {
+    try {
+      setIsLoading(true);
+      const res = await Community.getQuestion(id);
+      if (res?.data) {
+        setQuestionData(mapQuestion(res.data));
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+    } catch (err) {
+      console.error('Failed to load question', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!questionData?.answers || questionData.answers.length === 0) return;
-    setAnswers(questionData.answers);
-    if (questionData.bestAnswerId) {
-      setBestAnswerId(questionData.bestAnswerId);
-    }
-  }, [questionData]);
+    if (id) loadQuestion();
+  }, [id]);
 
   useEffect(() => {
     if (scrollToAnswerId) {
       const el = document.getElementById(`answer-${scrollToAnswerId}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [scrollToAnswerId]);
+  }, [scrollToAnswerId, questionData]);
 
-  const submitAnswer = () => {
+  const submitAnswer = async () => {
     if (!answerText.trim()) return;
-    const newAnswer = {
-      id: Date.now().toString(),
-      text: answerText,
-      author: { id: 'me', name: 'You', avatar: 'YO' },
-      votes: 0,
-      createdAt: Date.now(),
-    };
-    setAnswers(prev => [...prev, newAnswer]);
-    setAnswerText('');
+    try {
+      await Community.submitAnswer(id, answerText);
+      setAnswerText('');
+      loadQuestion(); // Refresh
+    } catch (err) {
+      alert(err?.message || 'Failed to post answer');
+    }
   };
 
-  const selectBestAnswer = (answerId) => {
-    setBestAnswerId(answerId);
+  const selectBestAnswer = async (answerId) => {
+    try {
+      await Community.markBestAnswer(id, answerId);
+      loadQuestion();
+    } catch (err) {
+      alert(err?.message || 'Failed to mark best answer');
+    }
   };
 
-  const likeAnswer = (answerId) => {
-    setAnswers(prev => prev.map(a => a.id === answerId ? { ...a, votes: a.votes + 1 } : a));
+  const likeAnswer = async (answerId) => {
+    try {
+      await Community.upvoteAnswer(answerId);
+      loadQuestion();
+    } catch (err) {
+      // Ignore upvote errors usually
+    }
   };
 
-  const displayQuestion = questionData || question || {};
-  const questionTitle = displayQuestion.text || 'How do you set up the equations for a two-mass pulley system?';
+  const displayQuestion = questionData || {};
+  const questionTitle = displayQuestion.text || 'Question';
   const practiceQuestionId = displayQuestion.practice_question_id;
-  const questionBody = displayQuestion.body || 'I understand that Tension is the same on both sides, but I keep getting the signs wrong for acceleration. Can someone break down the steps?';
-  const authorName = displayQuestion.author_name || 'Alex S.';
-  const authorId = displayQuestion.user_id || 'asker';
+  const questionBody = displayQuestion.body || '';
+  const authorName = displayQuestion.author_name || 'Student';
+  const authorId = displayQuestion.user_id;
   const authorInitials = initials(authorName);
-  const postedAt = displayQuestion.created_at ? new Date(displayQuestion.created_at).toLocaleDateString() : '2 hours ago';
+  const postedAt = displayQuestion.created_at ? new Date(displayQuestion.created_at).toLocaleDateString() : '';
 
-  if (isLoading && !displayQuestion?.text) {
+  if (isLoading && !questionData) {
     return (
       <div className="min-h-screen bg-[#F0F9FF] dark:bg-[#080C14] flex items-center justify-center">
-        <p className="text-sm font-bold text-sky-600/70 dark:text-sky-400/70">Loading question...</p>
+        <p className="text-sm font-bold text-sky-600/70 dark:text-sky-400/70 animate-pulse">Loading question...</p>
       </div>
     );
   }

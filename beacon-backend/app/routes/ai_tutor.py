@@ -132,8 +132,11 @@ def send_message(conv_id):
     data = request.get_json()
 
     user_message = data.get('message', '').strip()
-    if not user_message:
-        return error_response('Message is required', 422)
+    image_data = data.get('image_data')  # Base64 encoded image
+    mime_type = data.get('mime_type', 'image/jpeg')
+
+    if not user_message and not image_data:
+        return error_response('Message or image is required', 422)
 
     explanation_level = data.get('explanation_level', user.explanation_level or 'normal')
     user_context = {
@@ -194,8 +197,18 @@ def send_message(conv_id):
 
     def generate():
         try:
-            for chunk in AIService.chat(str(conv.id), user_message, explanation_level, user_context, rag_context=rag_context):
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            if image_data:
+                # Use Gemini for this turn because there's an image
+                for chunk in AIService.chat_with_image(
+                    str(conv.id), user_message, image_data, mime_type, explanation_level, user_context
+                ):
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            else:
+                # Normal text-only chat with Groq
+                for chunk in AIService.chat(
+                    str(conv.id), user_message, explanation_level, user_context, rag_context=rag_context
+                ):
+                    yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"

@@ -50,17 +50,18 @@ const getHeaders = (isMultipart = false) => {
 };
 
 const handleResponse = async (res, url) => {
+  // Check for 401 Unauthorized
+  if (res.status === 401 && !url?.includes('/auth/login') && !url?.includes('/auth/register')) {
+    localStorage.removeItem('beacon_token');
+    localStorage.setItem('beacon_session_expired', 'true');
+    // Save current path to redirect back after login
+    localStorage.setItem('beacon_redirect_after_login', window.location.pathname);
+    window.location.href = '/auth/signin';
+    return;
+  }
+
   const data = await res.json();
-  
   if (!res.ok) {
-    // Handle 401 Unauthorized - but NOT for login/register endpoints
-    if (res.status === 401 && !url?.includes('/auth/login') && !url?.includes('/auth/register')) {
-      localStorage.removeItem('beacon_token');
-      localStorage.setItem('beacon_session_expired', 'true');
-      window.location.href = '/auth/signin';
-      return;
-    }
-    // Throw error to trigger catch block
     throw { status: res.status, ...data };
   }
   return data;
@@ -98,16 +99,33 @@ const api = {
     }, 30000).then((res) => handleResponse(res, url)),
 
   /** Stream AI tutor response via Server-Sent Events */
-  streamChat: (conversationId, message, explanationLevel, onChunk, onDone) => {
+  streamChat: (conversationId, message, options = {}, onChunk, onDone) => {
+    const { explanationLevel, imageData, mimeType } = options;
     const token = localStorage.getItem('beacon_token');
-    fetch(`${BASE_URL}/api/ai-tutor/conversations/${conversationId}/messages`, {
+    const url = `/api/ai-tutor/conversations/${conversationId}/messages`;
+    
+    fetch(`${BASE_URL}${url}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ message, explanation_level: explanationLevel }),
+      body: JSON.stringify({ 
+        message, 
+        explanation_level: explanationLevel,
+        image_data: imageData,
+        mime_type: mimeType,
+      }),
     }).then(async (res) => {
+      if (res.status === 401) {
+        handleResponse(res, url);
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Stream error' }));
+        throw { status: res.status, ...err };
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -125,11 +143,17 @@ const api = {
             try {
               const parsed = JSON.parse(raw);
               if (parsed.chunk) onChunk(parsed.chunk);
-            } catch (_) {}
+              if (parsed.error) throw new Error(parsed.error);
+            } catch (e) {
+              console.error('SSE Parse error', e);
+            }
           }
         }
       }
       onDone && onDone();
+    }).catch(err => {
+      console.error('Stream failed:', err);
+      // Fallback if component doesn't handle error
     });
   },
 };
@@ -141,7 +165,7 @@ export const clearToken = () => localStorage.removeItem('beacon_token');
 export const isLoggedIn = () => !!getToken();
 
 // ─── Shortcut API calls ───────────────────────────────────────────────────────
-export const Auth = {
+  checkSession: () => api.get('/api/auth/me'), // Basic heartbeat
   register: (data) => api.post('/api/auth/register', data),
   login: (data) => api.post('/api/auth/login', data),
   logout: () => api.post('/api/auth/logout'),
@@ -153,6 +177,7 @@ export const Auth = {
 
 export const Users = {
   getMe: () => api.get('/api/users/me'),
+  heartbeat: () => api.post('/api/users/me/heartbeat', {}),
   updateMe: (data) => api.put('/api/users/me', data),
   getStats: () => api.get('/api/users/me/stats'),
   getSubjects: () => api.get('/api/users/me/subjects'),
@@ -330,6 +355,11 @@ export const Notifications = {
 export const Community = {
   listQuestions: (page = 1) => api.get(`/api/community/questions?page=${page}`),
   getQuestion: (id) => api.get(`/api/community/questions/${id}`),
+  postQuestion: (data) => api.post('/api/community/questions', data),
+  submitAnswer: (id, body) => api.post(`/api/community/questions/${id}/answers`, { body }),
+  upvoteAnswer: (answerId) => api.post(`/api/community/answers/${answerId}/upvote`),
+  markBestAnswer: (questionId, answerId) => api.put(`/api/community/questions/${questionId}/best-answer`, { answer_id: answerId }),
+  
   listTutors: (params = {}) => {
     const filtered = Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -339,15 +369,9 @@ export const Community = {
   },
   getTutor: (id) => api.get(`/api/community/tutors/${id}`),
   rateTutor: (id, data) => api.post(`/api/community/tutors/${id}/rate`, data),
-  getBuddy: () => api.get('/api/community/buddies'),
-  getBuddies: async () => {
-    const res = await api.get('/api/community/buddies');
-    const hasBuddy = !!res?.data?.has_buddy;
-    if (hasBuddy && res?.data?.buddy) {
-      return { ...res, data: [{ id: res.data.relationship_id, user: res.data.buddy }] };
-    }
-    return { ...res, data: [] };
-  },
+  
+  // Buddies
+  getBuddies: () => api.get('/api/community/buddies'), // Returns array of buddies now
   getBuddyRequests: () => api.get('/api/community/buddies/requests'),
   findBuddies: () => api.get('/api/community/buddies/find'),
   requestBuddy: (userId) => api.post('/api/community/buddies/request', { user_id: userId }),
@@ -357,7 +381,10 @@ export const Community = {
   sendBuddyMessage: (body) => api.post('/api/community/buddies/messages', { body }),
   getBuddyTyping: () => api.get('/api/community/buddies/typing'),
   setBuddyTyping: (isTyping) => api.post('/api/community/buddies/typing', { is_typing: isTyping }),
+  
   getStudent: (studentId) => api.get(`/api/community/students/${studentId}`),
+  
+  // Challenges
   listChallenges: (params) => {
     const q = params?.status ? `?status=${encodeURIComponent(params.status)}` : '';
     return api.get(`/api/community/challenges${q}`);
@@ -366,6 +393,7 @@ export const Community = {
   getChallenge: (id) => api.get(`/api/community/challenges/${id}`),
   acceptChallenge: (id) => api.put(`/api/community/challenges/${id}/accept`, {}),
   declineChallenge: (id) => api.put(`/api/community/challenges/${id}/decline`, {}),
+  pingOpponent: (id) => api.post(`/api/community/challenges/${id}/ping`),
   submitChallengeAnswer: (id, data) => api.post(`/api/community/challenges/${id}/answers`, data),
   completeChallenge: (id) => api.post(`/api/community/challenges/${id}/complete`, {}),
 };
@@ -447,77 +475,9 @@ export const Literature = {
 };
 
 export const AITutor = {
-  streamChat: (conversationId, message, explanationLevel, onChunk, onDone) => {
-    const token = localStorage.getItem('beacon_token');
-    fetch(`${BASE_URL}/api/ai-tutor/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ message, explanation_level: explanationLevel }),
-    }).then(async (res) => {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+  streamChat: api.streamChat,
+  streamConceptExplain: api.streamConceptExplain,
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const raw = line.slice(6).trim();
-            if (raw === '[DONE]') { onDone && onDone(); return; }
-            try {
-              const parsed = JSON.parse(raw);
-              if (parsed.chunk) onChunk(parsed.chunk);
-            } catch (_) {}
-          }
-        }
-      }
-      onDone && onDone();
-    });
-  },
-  
-  // Concept streaming
-  streamConceptExplain: (conceptId, level, onChunk, onData, onDone) => {
-    const token = localStorage.getItem('beacon_token');
-    fetch(`${BASE_URL}/api/ai-tutor/concepts/${conceptId}/explain`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ level }),
-    }).then(async (res) => {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const raw = line.slice(6).trim();
-            if (raw === '[DONE]') { onDone && onDone(); return; }
-            try {
-              const parsed = JSON.parse(raw);
-              if (parsed.text) onChunk(parsed.text);
-              if (parsed.related_questions || parsed.videos) onData(parsed);
-            } catch (_) {}
-          }
-        }
-      }
-      onDone && onDone();
-    });
-  },
   
   // Write mode
   startWriteSession: (data) => api.post('/api/ai-tutor/write/session', data),

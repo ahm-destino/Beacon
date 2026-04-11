@@ -439,9 +439,155 @@ class AIService:
         db.session.commit()
 
     @classmethod
-    def get_embedding(cls, text):
+    def chat_with_image(cls, conversation_id, user_message, image_b64, mime_type,
+                        explanation_level, user_context):
+        """Handle a single chat turn with an image using Gemini Vision.
+        
+        Strategy (per user request):
+        - This turn ONLY: route to Gemini multimodal (reads the image).
+        - Response is stored in conversation history as a normal assistant message.
+        - All subsequent turns (text-only) revert to Groq automatically via chat().
+        - If a new image is attached later, this method is called again for that turn.
+        
+        Yields text chunks (SSE-compatible).
         """
-        Convert a string of text into a list of 384 numbers (a vector).
+        from ..models import Conversation, Message
+
+        keys = cls._get_gemini_keys()
+        if not keys:
+            # Fallback: treat image as text-only (cannot read image)
+            ocr_prefix = '[Image uploaded — Gemini vision unavailable. Describe your image in text for best results.]\n\n'
+            combined = ocr_prefix + user_message
+            yield from cls.chat(conversation_id, combined, explanation_level, user_context)
+            return
+
+        conv = Conversation.query.get(conversation_id)
+        history = Message.query.filter_by(conversation_id=conversation_id).order_by(
+            Message.created_at
+        ).all()
+
+        # System prompt (same style as Groq)
+        system_prompt = cls.build_system_prompt(explanation_level, user_context)
+
+        # Build Gemini conversation history (text only from past turns)
+        contents = []
+        if system_prompt:
+            contents.append({
+                'role': 'user',
+                'parts': [{'text': f'[System]: {system_prompt}'}],
+            })
+            contents.append({'role': 'model', 'parts': [{'text': 'Understood. I am ready to help.'}]})
+
+        for m in history[-18:]:
+            role = 'model' if m.role == 'assistant' else 'user'
+            contents.append({'role': role, 'parts': [{'text': m.content}]})
+
+        # Current turn: text + image
+        current_parts = []
+        if user_message and user_message.strip():
+            current_parts.append({'text': user_message})
+        current_parts.append({
+            'inline_data': {
+                'mime_type': mime_type or 'image/jpeg',
+                'data': image_b64,
+            }
+        })
+        contents.append({'role': 'user', 'parts': current_parts})
+
+        # Try each Gemini key/model
+        models = cls._get_gemini_models()
+        full_response = ''
+
+        for attempt in range(len(keys) * max(1, len(models))):
+            key = cls._next_gemini_key(keys)
+            model = cls._next_gemini_model(models)
+            if not key or not model:
+                break
+            if cls._is_gemini_key_cooled(key) or cls._is_gemini_model_cooled(model):
+                continue
+
+            # Use streaming endpoint
+            url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse'
+            payload = {
+                'contents': contents,
+                'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2000},
+            }
+            headers = {'x-goog-api-key': key, 'Content-Type': 'application/json'}
+
+            try:
+                resp = requests.post(url, headers=headers, json=payload,
+                                     stream=True, timeout=cls.GEMINI_TIMEOUT_SECS)
+                if resp.status_code != 200:
+                    err = resp.text.lower()
+                    if resp.status_code in (429, 503) or 'resource_exhausted' in err:
+                        cls._cooldown_gemini_key(key)
+                        cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)
+                        continue
+                    if resp.status_code == 404 or 'not found' in err:
+                        cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS)
+                        continue
+                    break  # Unrecoverable error
+
+                # Stream SSE lines
+                for raw_line in resp.iter_lines():
+                    if not raw_line:
+                        continue
+                    line = raw_line.decode('utf-8') if isinstance(raw_line, bytes) else raw_line
+                    if not line.startswith('data: '):
+                        continue
+                    json_str = line[6:].strip()
+                    if not json_str or json_str == '[DONE]':
+                        continue
+                    try:
+                        chunk_data = json.loads(json_str)
+                        candidates = chunk_data.get('candidates', [])
+                        for cand in candidates:
+                            for part in cand.get('content', {}).get('parts', []):
+                                text = part.get('text', '')
+                                if text:
+                                    full_response += text
+                                    yield text
+                    except Exception:
+                        continue
+                break  # Success — exit retry loop
+
+            except Exception as e:
+                cls._cooldown_gemini_key(key)
+                continue
+
+        if not full_response:
+            # All Gemini attempts failed — fall back to Groq without image
+            fallback_msg = '[Could not read image with Gemini. Answering based on text only.]\n\n' + user_message
+            yield from cls.chat(conversation_id, fallback_msg, explanation_level, user_context)
+            return
+
+        # Persist the image turn in conversation history
+        user_msg = Message(
+            conversation_id=conversation_id,
+            role='user',
+            content=f'[Image sent] {user_message}' if user_message else '[Image sent]',
+            explanation_level=explanation_level,
+        )
+        ai_msg = Message(
+            conversation_id=conversation_id,
+            role='assistant',
+            content=full_response,
+            explanation_level=explanation_level,
+            tokens_used=None,
+        )
+        conv.message_count = (conv.message_count or 0) + 2
+        conv.updated_at = datetime.utcnow()
+
+        if len(history) == 0:
+            conv.title = (user_message or 'Image question')[:60]
+
+        db.session.add(user_msg)
+        db.session.add(ai_msg)
+        db.session.commit()
+
+    @classmethod
+    def get_embedding(cls, text):
+        """Convert a string of text into a list of 384 numbers (a vector).
         
         Now uses Gemini Cloud API to avoid server OOM crashes.
         """

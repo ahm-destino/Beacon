@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
 from ..extensions import db
 from ..models import User, PracticeSession, SessionAnswer, Streak, UserBadge, PointTransaction, Badge, Referral, StudyEvent
 from ..utils.helpers import success_response, error_response, paginate_query, generate_referral_code
@@ -114,6 +115,18 @@ def get_me():
     if not user:
         return error_response('User not found', 404)
     return success_response(user.to_dict())
+
+
+@users_bp.route('/me/heartbeat', methods=['POST'])
+@jwt_required()
+def heartbeat():
+    """Lightweight endpoint called every 60s by the frontend to update last_seen."""
+    user = get_current_user()
+    if not user:
+        return error_response('User not found', 404)
+    user.last_seen = datetime.utcnow()
+    db.session.commit()
+    return success_response({'ok': True})
 
 
 @users_bp.route('/me', methods=['PUT'])

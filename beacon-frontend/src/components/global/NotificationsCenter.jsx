@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Notifications as NotificationsAPI } from '../../services/api';
 
@@ -94,16 +94,23 @@ export default function NotificationsCenter() {
       } catch (_) {}
     }
     const d = n.data || {};
+    // Deep linking logic
     if (d.path && typeof d.path === 'string') {
       navigate(d.path);
       return;
     }
+    
+    // Legacy fallbacks
     if (d.challenge_id) {
-      navigate('/community/challenges', { state: { highlightChallengeId: d.challenge_id } });
+      navigate('/community/challenges');
       return;
     }
     if (d.question_id) {
       navigate(`/community/qa/${d.question_id}`);
+      return;
+    }
+    if (n.type?.includes('buddy')) {
+      navigate('/community/buddies');
       return;
     }
   };

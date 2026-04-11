@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func, case
@@ -30,6 +30,11 @@ def get_uid(): return get_jwt_identity()
 def _public_user_summary(user, accuracy=0.0, streak=0):
     if not user:
         return None
+    is_online = (
+        user.last_seen is not None and
+        (datetime.utcnow() - user.last_seen).total_seconds() < 300
+    )
+    from ..utils.helpers import utc_iso
     return {
         'id': str(user.id),
         'full_name': user.full_name,
@@ -41,7 +46,8 @@ def _public_user_summary(user, accuracy=0.0, streak=0):
         'subjects': user.subjects or [],
         'accuracy': round(float(accuracy or 0), 1),
         'streak': int(streak or 0),
-        'last_seen': user.last_seen.isoformat() if user.last_seen else None,
+        'is_online': is_online,
+        'last_seen': utc_iso(user.last_seen),
     }
 
 
@@ -436,32 +442,20 @@ def send_buddy_request():
     if not buddy_user or not buddy_user.is_active:
         return error_response('User not found', 404)
 
-    if _has_active_buddy(uid):
-        return error_response('You already have an active buddy', 409)
-    if _has_active_buddy(buddy_id):
-        return error_response('User already has an active buddy', 409)
-
-    existing_same = StudyBuddy.query.filter_by(user_id=uid, buddy_id=buddy_id).first()
-    existing_any = StudyBuddy.query.filter(
+    # Block self-request
+    # Allow multiple buddies - only block duplicate pending requests to the SAME person
+    existing_pending = StudyBuddy.query.filter(
         db.or_(
             db.and_(StudyBuddy.user_id == uid, StudyBuddy.buddy_id == buddy_id),
             db.and_(StudyBuddy.user_id == buddy_id, StudyBuddy.buddy_id == uid),
-        )
+        ),
+        StudyBuddy.status == 'pending'
     ).first()
+    if existing_pending:
+        return error_response('Buddy request already pending', 409)
 
-    if existing_any and existing_any.status != 'ended':
-        return error_response('Request already exists', 409)
-
-    if existing_same and existing_same.status == 'ended':
-        existing_same.status = 'pending'
-        existing_same.created_at = datetime.utcnow()
-        req = existing_same
-    elif existing_any and existing_any.status == 'ended':
-        req = StudyBuddy(user_id=uid, buddy_id=buddy_id, status='pending')
-        db.session.add(req)
-    else:
-        req = StudyBuddy(user_id=uid, buddy_id=buddy_id, status='pending')
-        db.session.add(req)
+    req = StudyBuddy(user_id=uid, buddy_id=buddy_id, status='pending')
+    db.session.add(req)
 
     requester = User.query.get(uid)
     notif = Notification(
@@ -469,7 +463,7 @@ def send_buddy_request():
         type='buddy_request',
         title='New study buddy request',
         body=f'{requester.full_name} wants to study with you.',
-        data={'request_id': str(req.id), 'from_user_id': str(uid)},
+        data={'request_id': str(req.id), 'from_user_id': str(uid), 'path': '/community/buddies'},
         sent_via=['in_app'],
     )
     db.session.add(notif)
@@ -491,20 +485,15 @@ def accept_buddy(buddy_id):
         status='pending'
     ).first_or_404()
 
-    if _has_active_buddy(uid):
-        return error_response('You already have an active buddy', 409)
-    if _has_active_buddy(req.user_id):
-        return error_response('User already has an active buddy', 409)
-
     req.status = 'active'
 
     accepter = User.query.get(uid)
     notif = Notification(
         user_id=req.user_id,
         type='buddy_accepted',
-        title='Buddy request accepted',
-        body=f'{accepter.full_name} accepted your buddy request.',
-        data={'relationship_id': str(req.id), 'buddy_id': str(uid)},
+        title='Buddy request accepted! 🎉',
+        body=f'{accepter.full_name} accepted your buddy request. Start chatting!',
+        data={'relationship_id': str(req.id), 'buddy_id': str(uid), 'path': '/community/buddies/chat'},
         sent_via=['in_app'],
     )
     db.session.add(notif)
@@ -533,7 +522,7 @@ def end_buddy(buddy_id):
             type='buddy_ended',
             title='Buddy relationship ended',
             body=f'{actor.full_name} ended your study buddy connection.',
-            data={'relationship_id': str(rel.id)},
+            data={'relationship_id': str(rel.id), 'path': '/community/buddies'},
             sent_via=['in_app'],
         )
         db.session.add(notif)
@@ -908,6 +897,19 @@ def create_challenge():
         opponent_answers={},
     )
     db.session.add(challenge)
+    db.session.flush()  # get the ID before commit
+
+    # Notify the opponent
+    challenger_user = User.query.get(uid)
+    challenge_notif = Notification(
+        user_id=opponent_id,
+        type='challenge_invite',
+        title=f'⚔️ Challenge from {challenger_user.full_name}!',
+        body=f'{challenger_user.full_name} challenged you to a {subject} battle. Accept before they think you\'re scared! 😤',
+        data={'challenge_id': str(challenge.id), 'path': f'/community/challenges/{challenge.id}'},
+        sent_via=['in_app'],
+    )
+    db.session.add(challenge_notif)
     db.session.commit()
     return success_response(challenge.to_dict(current_user_id=uid), status_code=201)
 
@@ -1067,6 +1069,14 @@ def submit_challenge_answer(challenge_id):
 @community_bp.route('/challenges/<challenge_id>/complete', methods=['POST'])
 @jwt_required()
 def complete_challenge(challenge_id):
+    """Mark the current user's side as complete.
+    
+    Competitive rules:
+    - First person to SUBMIT locks their score and starts a 24-hour window.
+    - The other user gets a taunt notification showing the score to beat.
+    - When the second person also submits (or 24h expires), winner is declared.
+    - If both already submitted, finalize immediately.
+    """
     uid = get_uid()
     c = Challenge.query.filter_by(id=challenge_id).first_or_404()
     if str(uid) not in (str(c.challenger_id), str(c.opponent_id)):
@@ -1079,35 +1089,119 @@ def complete_challenge(challenge_id):
         if not answer_map:
             return 0.0
         total = len(c.question_ids or []) or 1
-        correct = 0
-        for qid, sel in (answer_map or {}).items():
-            q = by_id.get(str(qid))
-            if q and sel == q.correct_answer:
-                correct += 1
+        correct = sum(
+            1 for qid, sel in (answer_map or {}).items()
+            if by_id.get(str(qid)) and sel == by_id[str(qid)].correct_answer
+        )
         return round((correct / total) * 100, 1)
 
-    if str(uid) == str(c.challenger_id):
-        c.challenger_completed_at = datetime.utcnow()
-        c.challenger_score = compute_score(c.challenger_answers or {})
-    else:
-        c.opponent_completed_at = datetime.utcnow()
-        c.opponent_score = compute_score(c.opponent_answers or {})
+    is_challenger = str(uid) == str(c.challenger_id)
+    now = datetime.utcnow()
 
+    if is_challenger:
+        if c.challenger_completed_at:  # already submitted
+            pass
+        else:
+            c.challenger_completed_at = now
+            c.challenger_score = compute_score(c.challenger_answers or {})
+    else:
+        if c.opponent_completed_at:  # already submitted
+            pass
+        else:
+            c.opponent_completed_at = now
+            c.opponent_score = compute_score(c.opponent_answers or {})
+
+    # ── Both sides done → finalize
     if c.challenger_completed_at and c.opponent_completed_at:
         c.status = 'completed'
         c_score = c.challenger_score or 0
         o_score = c.opponent_score or 0
-        if c_score > o_score:
-            c.winner_id = c.challenger_id
-        elif o_score > c_score:
-            c.winner_id = c.opponent_id
-        else:
-            c.winner_id = None
+        c.winner_id = (
+            c.challenger_id if c_score > o_score
+            else c.opponent_id if o_score > c_score
+            else None
+        )
+        winner = User.query.get(c.winner_id) if c.winner_id else None
+        # Notify both players
+        for notif_user_id in (str(c.challenger_id), str(c.opponent_id)):
+            is_winner = c.winner_id and str(c.winner_id) == notif_user_id
+            title = '🏆 You Won!' if is_winner else ('😮 You Lost!' if c.winner_id else '🤝 It\'s a Draw!')
+            result_body = (
+                f'You beat your opponent! {c_score}% vs {o_score}%'
+                if is_winner else
+                f'Better luck next time! {o_score}% vs {c_score}%'
+                if c.winner_id else
+                f'Incredible match! Both scored equally. {c_score}%'
+            )
+            db.session.add(Notification(
+                user_id=notif_user_id,
+                type='challenge_completed',
+                title=title,
+                body=result_body,
+                data={'challenge_id': str(c.id), 'path': f'/community/challenges/{c.id}/results'},
+                sent_via=['in_app'],
+            ))
     else:
-        c.status = 'active'
+        # ── First person just finished → start 24h window
+        if not c.expires_at:
+            c.expires_at = now + timedelta(hours=24)
+        c.status = 'waiting'
+
+        # Determine who finished and who is waiting
+        my_score = c.challenger_score if is_challenger else c.opponent_score
+        other_id = c.opponent_id if is_challenger else c.challenger_id
+        me = User.query.get(uid)
+
+        # Send competitive notification to the opponent
+        db.session.add(Notification(
+            user_id=other_id,
+            type='challenge_waiting',
+            title=f'⚡ {me.full_name} just finished!',
+            body=f'They scored {my_score}%. You have 24 hours to beat that! 🎯',
+            data={
+                'challenge_id': str(c.id),
+                'target_score': my_score,
+                'path': f'/community/challenges/{c.id}',
+            },
+            sent_via=['in_app'],
+        ))
 
     db.session.commit()
     payload = c.to_dict(current_user_id=uid)
     payload['my_score'] = c.challenger_score if payload['my_role'] == 'challenger' else c.opponent_score
     payload['opponent_score'] = c.opponent_score if payload['my_role'] == 'challenger' else c.challenger_score
     return success_response(payload)
+
+
+@community_bp.route('/challenges/<challenge_id>/ping', methods=['POST'])
+@jwt_required()
+def ping_challenge_opponent(challenge_id):
+    """'Wait for me!' ping — stores in Redis for 60s so the opponent's poll picks it up."""
+    uid = get_uid()
+    c = Challenge.query.filter_by(id=challenge_id).first_or_404()
+    if str(uid) not in (str(c.challenger_id), str(c.opponent_id)):
+        return error_response('Not allowed', 403)
+
+    pinger = User.query.get(uid)
+    redis_key = f'challenge_ping:{challenge_id}:{uid}'
+
+    # Forward to the OTHER user via a notification
+    other_id = c.opponent_id if str(uid) == str(c.challenger_id) else c.challenger_id
+    db.session.add(Notification(
+        user_id=other_id,
+        type='challenge_ping',
+        title=f'⏳ {pinger.full_name} says: Wait for me!',
+        body='They\'re catching up — don\'t close the app!',
+        data={'challenge_id': str(c.id), 'path': f'/community/challenges/{c.id}'},
+        sent_via=['in_app'],
+    ))
+    db.session.commit()
+
+    # Store a Redis flag (60s TTL) readable by the poller
+    try:
+        if redis_client:
+            redis_client.setex(redis_key, 60, pinger.full_name)
+    except Exception:
+        pass  # Redis unavailable — notification already sent
+
+    return success_response({'pinged': True, 'challenge_id': challenge_id})

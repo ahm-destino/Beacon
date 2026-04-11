@@ -297,3 +297,21 @@ def resend_otp():
     print(f"[DEV] Phone OTP for {phone}: {otp}")
 
     return success_response(message='OTP sent')
+
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required(optional=True)
+def get_me():
+    """Verify session and optionally return user payload. Used by legacy OnboardingGuard."""
+    uid = get_jwt_identity()
+    if not uid:
+        return error_response('Unauthorized', 401)
+    user = User.query.get(uid)
+    if not user:
+        return error_response('User not found', 404)
+    
+    from datetime import datetime
+    user.last_seen = datetime.utcnow()
+    db.session.commit()
+    
+    return success_response(user.to_dict())

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from ..extensions import db
+from ..utils.helpers import utc_iso
 
 
 class User(db.Model):
@@ -117,6 +118,6 @@ class User(db.Model):
             'is_admin': self.is_admin,
             'is_banned': self.is_banned,
             'referral_code': self.referral_code,
-            'last_seen': self.last_seen.isoformat() if self.last_seen else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_seen': utc_iso(self.last_seen),
+            'created_at': utc_iso(self.created_at),
         }
