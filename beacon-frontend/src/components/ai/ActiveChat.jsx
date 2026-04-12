@@ -156,7 +156,6 @@ export default function ActiveChat() {
       }
     }
 
-    const currentImage = imagePreview;
     const userMessage = {
       id: Date.now().toString(),
       sender: 'user',
