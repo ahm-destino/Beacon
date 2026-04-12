@@ -665,12 +665,6 @@ def list_concepts():
         'weak_areas': weak_areas,
         'search_active': bool(search)
     })
-    weak_areas = sorted(weak_areas, key=lambda x: x['accuracy'])[:5]
-
-    return success_response({
-        'subjects': subjects,
-        'weak_areas': weak_areas,
-    })
 
 
 @ai_tutor_bp.route('/concepts/<concept_id>', methods=['GET'])

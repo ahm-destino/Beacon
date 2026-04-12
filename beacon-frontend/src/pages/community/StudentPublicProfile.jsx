@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import SubScreenHeader from '../../components/shared/SubScreenHeader';
 import BottomNav from '../../components/shared/BottomNav';
@@ -186,7 +186,7 @@ export default function StudentPublicProfile() {
             })}
             className="w-full py-3.5 rounded-xl font-['Syne'] font-bold text-base text-white bg-sky-700 dark:bg-sky-500 hover:bg-sky-800 active:scale-[0.98] transition-all duration-200"
           >
-            ⚔️ Challenge {displayProfile.name.split(' ')[0]}
+            ⚔️ Challenge {(displayProfile.name || 'Student').split(' ')[0]}
           </button>
 
           {!isBuddy && (
@@ -222,7 +222,7 @@ export default function StudentPublicProfile() {
                 onClick={() => navigate(-1)}
                 className="w-full py-3 rounded-xl bg-sky-700 text-white font-['Syne'] font-bold mb-3"
               >
-                🎉 Congrats {displayProfile.name.split(' ')[0]}!
+                🎉 Congrats {(displayProfile.name || 'Student').split(' ')[0]}!
               </button>
               <button
                 onClick={() => navigate(-1)}

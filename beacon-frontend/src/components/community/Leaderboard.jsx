@@ -3,12 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import SubScreenHeader from '../shared/SubScreenHeader';
 import {
   Leaderboard as LeaderboardAPI,
-  Users,
+  Users as UsersAPI,
   Community,
   Streaks,
 } from '../../services/api';
 
-import { Shield, Trophy, Medal, Crown, Timer, Info, ArrowUpCircle, Flame, Lock } from 'lucide-react';
+import { Shield, Trophy, Medal, Crown, Timer, Info, ArrowUpCircle, Flame, Lock, Users as UsersIcon } from 'lucide-react';
 
 function formatPoints(n) {
   if (n == null) return '0';
@@ -78,7 +78,7 @@ export default function Leaderboard() {
     setError('');
     try {
       const [meRes, buddiesRes, streakRes] = await Promise.all([
-        Users.getMe().catch(() => ({ data: null })),
+        UsersAPI.getMe().catch(() => ({ data: null })),
         Community.getBuddies().catch(() => ({ data: [] })),
         Streaks.getMe().catch(() => ({ data: {} })),
       ]);
@@ -88,10 +88,9 @@ export default function Leaderboard() {
         Number(streakRes?.data?.current_streak ?? 0) || 0
       );
 
-      const buddies = Array.isArray(buddiesRes?.data) ? buddiesRes.data : [];
       const bSet = new Set(
-        (Array.isArray(buddies) ? buddies : [])
-          .map((b) => String(b.user?.id || b.user_id || ''))
+        (Array.isArray(buddiesRes?.data) ? buddiesRes.data : [])
+          .map((b) => String(b.user?.id || ''))
           .filter(Boolean)
       );
       setBuddySet(bSet);
@@ -365,7 +364,7 @@ export default function Leaderboard() {
                     <h4 className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMe ? 'text-white' : 'text-[#0C4A6E] dark:text-[#F0F9FF]'}`}>
                       {user.name}
                       {buddySet.has(String(user.user_id)) && (
-                        <Users size={12} className={isMe ? 'text-white/60' : 'text-sky-400'} />
+                        <UsersIcon size={12} className={isMe ? 'text-white/60' : 'text-sky-400'} />
                       )}
                     </h4>
                     <p className={`text-[10px] font-semibold truncate uppercase tracking-wider mt-0.5 ${isMe ? 'text-sky-100' : 'text-sky-500'}`}>

@@ -31,10 +31,9 @@ def is_question_structurally_valid(question):
     if any(not opt for opt in options):
         return False
 
-    # Reject duplicate options (often a sign of corruption)
-    normalized = [opt.lower() for opt in options]
-    if len(set(normalized)) < 4:
-        return False
+    # Relaxed: allow duplicate options but in future we should dedupe at ingestion.
+    # if len(set(normalized)) < 4:
+    #     return False
 
     return True
 

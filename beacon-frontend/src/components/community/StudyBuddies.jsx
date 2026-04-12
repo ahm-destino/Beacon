@@ -167,13 +167,13 @@ export default function StudyBuddies() {
                     <div key={rel.relationship_id || rel.id} className="bg-white dark:bg-[#0D1525] rounded-3xl border border-sky-100 dark:border-sky-900/20 p-5 shadow-sm">
                       <div className="flex items-center gap-4">
                         <div 
-                          onClick={() => navigate(`/community/students/${u.id}`, { state: { student: u } })}
+                          onClick={() => u?.id && navigate(`/community/students/${u.id}`, { state: { student: u } })}
                           className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold text-base overflow-hidden shadow-inner cursor-pointer"
                         >
-                          {u.profile_photo_url ? (
+                          {u?.profile_photo_url ? (
                             <img src={u.profile_photo_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            initials(u.full_name)
+                            initials(u?.full_name)
                           )}
                         </div>
                         <div className="flex-1 min-w-0">

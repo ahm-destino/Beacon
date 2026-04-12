@@ -71,6 +71,7 @@ export default function ConceptsLibrary() {
   }, [searchQuery]);
 
   const allConcepts = useMemo(() => {
+    if (!Array.isArray(subjects)) return [];
     const fromSubjects = subjects.flatMap((sub) =>
       (sub.concepts || []).map((concept) => ({
         id: concept.id || concept.name,
@@ -100,7 +101,7 @@ export default function ConceptsLibrary() {
         || (area?.subject || '').toLowerCase().includes(normalizedQuery))
     : weakAreas).filter(area => !isRubbish(area.name));
 
-  const filteredSubjects = subjects
+  const filteredSubjects = (Array.isArray(subjects) ? subjects : [])
     .filter((sub) => filter === 'All' || sub.id === filter)
     .map((sub) => {
       let filteredConcepts = (sub.concepts || []).filter(c => !isRubbish(c.name || c));
