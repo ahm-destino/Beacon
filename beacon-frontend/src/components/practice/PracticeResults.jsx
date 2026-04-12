@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-id';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
   BookOpen, RotateCcw, Home, Trophy, Target, Zap, Clock, 
   ArrowRight, Award, TrendingUp, BarChart3, Star, PieChart

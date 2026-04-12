@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-id';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, CheckCircle2, XCircle, Home, 
   Target, Zap, Clock, Trophy, Award, BarChart3, 
