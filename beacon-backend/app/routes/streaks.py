@@ -12,9 +12,23 @@ def get_streak():
     from datetime import date, timedelta
     uid = get_jwt_identity()
     streak = Streak.query.filter_by(user_id=uid).first()
-    if not streak:
-        return error_response('Streak record not found', 404)
     user = User.query.get(uid)
+    
+    if not streak:
+        # Return a safe "Zero Streak" default instead of 404
+        data = {
+            'user_id': str(uid),
+            'current_streak': 0,
+            'longest_streak': 0,
+            'total_study_days': 0,
+            'freezes_remaining': 0,
+            'points_balance': user.points_balance if user else 0,
+            'society_tier': 'none',
+            'streak_broken_today': False,
+            'previous_streak': 0
+        }
+        return success_response(data)
+
     data = streak.to_dict()
     data['points_balance'] = user.points_balance if user else 0
 

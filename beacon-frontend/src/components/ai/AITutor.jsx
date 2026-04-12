@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Settings, MessageSquare, Camera, Edit3, Mic, ArrowRight, BookOpen, ChevronRight, Clock, Target, Zap, Brain, Sparkles } from 'lucide-react';
+import { Settings, MessageSquare, Camera, Edit3, Mic, ArrowRight, BookOpen, ChevronRight, Clock, Target, Zap, Brain, Sparkles, Image as ImageIcon } from 'lucide-react';
 import AppHeader from '../shared/AppHeader';
 import BottomNav from '../shared/BottomNav';
 import api from '../../services/api';
@@ -12,6 +12,7 @@ export default function AITutor() {
   const [message, setMessage] = useState('');
   const [conversations, setConversations] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const fileInputRef = useRef(null);
 
   // Load conversations and group them
   useEffect(() => {
@@ -83,6 +84,25 @@ export default function AITutor() {
       }
     });
     setMessage('');
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      navigate('/ai-tutor/chat/new', {
+        state: {
+          initialMessage: message || 'Analyze this image...',
+          imageData: reader.result,
+          mimeType: file.type,
+          level,
+          autoSend: true
+        }
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const getTimeAgo = (timestamp) => {
@@ -270,6 +290,20 @@ export default function AITutor() {
               className="px-2 flex-1 bg-transparent outline-none font-[var(--font-jakarta)] text-sm text-[#0C4A6E] dark:text-[#F0F9FF] placeholder:text-sky-400/60"
             />
             <div className="flex items-center gap-3 pr-1">
+              <input
+                type="file"
+                hidden
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleFileChange}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-sky-400 hover:text-sky-600 transition-colors"
+                title="Upload Image"
+              >
+                <ImageIcon size={20} />
+              </button>
               <button 
                 onClick={() => navigate('/ai-tutor/camera')} 
                 className="text-sky-400 hover:text-sky-600 transition-colors"

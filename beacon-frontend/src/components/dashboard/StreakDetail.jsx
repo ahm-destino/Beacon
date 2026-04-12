@@ -93,7 +93,8 @@ export default function StreakDetail() {
 
   const calendarMap = useMemo(() => {
     const map = new Map();
-    for (const entry of calendar) {
+    const list = Array.isArray(calendar) ? calendar : [];
+    for (const entry of list) {
       if (entry?.date) map.set(entry.date, entry);
     }
     return map;
@@ -429,9 +430,9 @@ export default function StreakDetail() {
             <span className="font-[var(--font-syne)] font-black text-2xl text-white tracking-wide">🔥 {societyTier}</span>
           </div>
 
-          {topSociety.length > 0 ? (
+          {(Array.isArray(topSociety) ? topSociety : []).length > 0 ? (
             <div className="space-y-1 relative z-10">
-              {topSociety.map((row, i) => (
+              {(Array.isArray(topSociety) ? topSociety : []).map((row, i) => (
                 <div key={i} className="flex items-center gap-3 py-3 border-b border-white/10 last:border-0">
                   <span className="text-xl">🔥</span>
                   <span className="font-[var(--font-syne)] font-bold text-sm text-white flex-1 tracking-wider">{row.name || 'Student'}</span>
@@ -446,12 +447,12 @@ export default function StreakDetail() {
       </div>
 
       {/* FRIEND STREAKS */}
-      {friends.length > 0 && (
+      {(Array.isArray(friends) ? friends : []).length > 0 && (
         <div className="px-5 mt-4">
           <div className="bg-white dark:bg-[#0D1525] rounded-2xl p-5 border border-sky-100 dark:border-sky-900/20 shadow-sm">
             <h2 className="font-[var(--font-syne)] font-bold text-base text-[#0369A1] dark:text-[#0EA5E9] mb-4">Friend Streaks</h2>
             <div className="space-y-3">
-              {friends.map((f) => (
+              {(Array.isArray(friends) ? friends : []).map((f) => (
                 <div key={f.user_id} className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-sm font-bold text-sky-700 dark:text-sky-300">
                     {(f.name || 'U').slice(0, 1).toUpperCase()}

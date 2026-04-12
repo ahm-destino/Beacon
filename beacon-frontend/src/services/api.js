@@ -189,7 +189,7 @@ export const Users = {
 
 export const Practice = {
   createSession: (data) => api.post('/api/practice/sessions', data),
-  createJambFullSession: () => api.post('/api/practice/sessions/jamb-full', {}),
+  createJambFullSession: (data = {}) => api.post('/api/practice/sessions/jamb-full', data),
   getSessions: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return api.get(`/api/practice/sessions${q ? `?${q}` : ''}`);
@@ -372,7 +372,8 @@ export const Community = {
   rateTutor: (id, data) => api.post(`/api/community/tutors/${id}/rate`, data),
   
   // Buddies
-  getBuddies: () => api.get('/api/community/buddies'), // Returns array of buddies now
+  getBuddy: () => api.get('/api/community/buddies'),
+  getBuddies: () => api.get('/api/community/buddies/list'),
   getBuddyRequests: () => api.get('/api/community/buddies/requests'),
   findBuddies: () => api.get('/api/community/buddies/find'),
   requestBuddy: (userId) => api.post('/api/community/buddies/request', { user_id: userId }),

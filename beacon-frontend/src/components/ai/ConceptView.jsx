@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import SubScreenHeader from '../shared/SubScreenHeader';
@@ -338,31 +338,33 @@ export default function ConceptView() {
       <div className="px-5 space-y-6 mt-4" key={currentStep} style={{ animation: 'stepFade 0.35s ease' }}>
         {currentStep === 0 && (
           <>
-            <div className="w-full aspect-video bg-gray-900 rounded-2xl relative overflow-hidden group cursor-pointer shadow-lg shadow-sky-900/10 dark:shadow-none">
-              <img
-                src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80"
-                alt="Video thumbnail"
-                className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-sky-500/80 transition-colors">
-                  <Play size={24} className="ml-1" fill="currentColor" />
-                </div>
-              </div>
-              <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs text-white font-['Plus_Jakarta_Sans']">
-                {displayVideos.length > 0 ? 'Video' : 'No video'}
+            <div className="w-full aspect-video bg-sky-600 dark:bg-sky-500 rounded-3xl relative overflow-hidden flex flex-col items-center justify-center text-white shadow-xl shadow-sky-500/20">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+              <Sparkles size={60} className="mb-4 animate-pulse" />
+              <h2 className="font-[var(--font-syne)] font-black text-2xl uppercase tracking-widest">{conceptSubject}</h2>
+              <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest">
+                Concept Overview
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#0D1525] rounded-2xl p-5 border border-sky-100 dark:border-sky-900/20 shadow-sm">
-              <h2 className="font-[var(--font-syne)] font-bold text-lg text-[#0369A1] dark:text-[#0EA5E9] flex items-center gap-2 mb-3">
+            <div className="bg-white dark:bg-[#0D1525] rounded-[2rem] p-6 border border-sky-100 dark:border-sky-900/20 shadow-sm">
+              <h2 className="font-[var(--font-syne)] font-bold text-lg text-[#0369A1] dark:text-[#0EA5E9] flex items-center gap-2 mb-4">
                 <FileText size={20} />
-                Quick Summary
+                Strategic Summary
               </h2>
-              <p className="text-sm text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 leading-relaxed">
-                {shortSummary}
+              <p className="text-sm text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 leading-relaxed font-medium">
+                {details?.summary || shortSummary}
               </p>
+              {details?.bullets && (
+                <ul className="mt-4 space-y-2">
+                  {details.bullets.map((b, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-sky-600/80 dark:text-sky-300/80">
+                      <div className="w-1.5 h-1.5 rounded-full bg-sky-500 mt-1.5 shrink-0" />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {displayVideos.length > 0 && (

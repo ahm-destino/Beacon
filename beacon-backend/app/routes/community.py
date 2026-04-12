@@ -374,6 +374,46 @@ def get_buddy():
         status='pending'
     ).order_by(StudyBuddy.created_at.desc()).all()
 
+    return success_response({
+        'has_buddy': False,
+        'buddy': None,
+        'pending_requests_count': len(pending),
+    })
+
+
+@community_bp.route('/buddies/list', methods=['GET'])
+@jwt_required()
+def list_buddies():
+    """Returns an array of all active buddies."""
+    uid = get_uid()
+    buddies = StudyBuddy.query.filter(
+        db.or_(StudyBuddy.user_id == uid, StudyBuddy.buddy_id == uid),
+        StudyBuddy.status == 'active'
+    ).all()
+
+    results = []
+    for rel in buddies:
+        other_id = rel.buddy_id if str(rel.user_id) == uid else rel.user_id
+        other_user = User.query.get(other_id)
+        if not other_user:
+            continue
+            
+        other_streak = Streak.query.filter_by(user_id=other_id).first()
+        other_accuracy = _get_user_accuracy(other_id)
+        
+        results.append({
+            'relationship_id': str(rel.id),
+            'status': rel.status,
+            'created_at': rel.created_at.isoformat() if rel.created_at else None,
+            'user': _public_user_summary(
+                other_user,
+                accuracy=other_accuracy,
+                streak=(other_streak.current_streak if other_streak else 0)
+            )
+        })
+    
+    return success_response(results)
+
     pending_ids = [r.user_id for r in pending]
     accuracies = _accuracy_map(pending_ids)
     streaks = {

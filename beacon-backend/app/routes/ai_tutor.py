@@ -765,13 +765,14 @@ def get_concept(concept_id):
                 pass
 
     summary = (
-        f'{canonical_name} is a high-frequency topic in {subject}. '
-        'Focus on definitions, core rules, common traps, and exam-style practice.'
+        f'{canonical_name} is a key topic in {subject} and a frequent area of focus in competitive exams like JAMB and WAEC. '
+        f'Mastering {canonical_name} involves understanding its fundamental principles, practical applications, and common problem-solving patterns.'
     )
     bullets = [
-        'Master the core definition and notation first.',
-        'Practice at least 10 mixed questions (easy to hard).',
-        'Review common mistakes and why distractor options look tempting.',
+        f'Review the standard definitions and core formulas of {canonical_name}.',
+        f'Analyze how {canonical_name} connects to broader concepts in {subject}.',
+        f'Practice identifying this topic in complex, multi-concept past questions.',
+        'Watch the linked walkthrough videos to see step-by-step solutions.',
     ]
 
     return success_response({

@@ -20,6 +20,8 @@ export default function ActiveChat() {
     conceptContext,
     returnTo,
     returnState,
+    imageData: stateImageData,
+    mimeType: stateMimeType,
   } = location.state || {};
 
   const paramConversationId = params.conversationId || params.id;
@@ -84,11 +86,20 @@ export default function ActiveChat() {
       return;
     }
 
-    if (initialMessage) {
+    if (initialMessage || stateImageData) {
       if (autoSend) {
-        handleSend(initialMessage, true);
+        // If image present, we pass it to handleSend
+        if (stateImageData) {
+          setImagePreview(stateImageData);
+          // mimeType is usually handled by imageFile.type in handleSend, 
+          // so we set a temp file or update handleSend
+        }
+        handleSend(initialMessage || (stateImageData ? 'Analyze this image...' : ''), true, stateImageData, stateMimeType);
       } else {
         setInputText(initialMessage);
+        if (stateImageData) {
+          setImagePreview(stateImageData);
+        }
       }
     }
   }, []);
@@ -123,8 +134,11 @@ export default function ActiveChat() {
     }
   };
 
-  const handleSend = async (text, silent = false) => {
-    if (!text.trim() && !imagePreview) return;
+  const handleSend = async (text, silent = false, overrideImage = null, overrideMime = null) => {
+    const currentImage = overrideImage || imagePreview;
+    const currentMime = overrideMime || imageFile?.type || 'image/jpeg';
+
+    if (!text.trim() && !currentImage) return;
 
     let activeConversationId = conversationId;
     if (!activeConversationId || String(activeConversationId).startsWith('temp_')) {
@@ -175,7 +189,7 @@ export default function ActiveChat() {
         {
           explanationLevel: level,
           imageData: currentImage,
-          mimeType: imageFile?.type || 'image/jpeg'
+          mimeType: currentMime
         },
         (chunk) => {
           setMessages((prev) =>
@@ -347,7 +361,7 @@ export default function ActiveChat() {
                 placeholder="Ask anything..." 
                 className="flex-1 bg-transparent outline-none text-sm"
               />
-              <button onClick={() => fileInputRef.current?.click()} className="text-sky-400 hover:text-sky-600"><Camera size={20} /></button>
+              <button onClick={() => fileInputRef.current?.click()} className="text-sky-400 hover:text-sky-600"><ImageIcon size={20} /></button>
               <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handleFileChange} />
             </div>
             <button 

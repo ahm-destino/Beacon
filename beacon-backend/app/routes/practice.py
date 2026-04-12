@@ -189,8 +189,16 @@ def create_jamb_full_session():
     if not user:
         return error_response('User not found', 404)
 
-    selected = user.subjects or []
+    data = request.get_json() or {}
+    input_subjects = data.get('subjects')
+
+    if input_subjects and isinstance(input_subjects, list) and len(input_subjects) > 0:
+        selected = input_subjects
+    else:
+        selected = user.subjects or []
+
     # We expect backend onboarding to store: ['English', <sub1>, <sub2>, <sub3>]
+    # Or frontend to send exactly that.
     other_subjects = [s for s in selected if s and s != 'English']
     if 'English' not in selected or len(other_subjects) != 3:
         return error_response(

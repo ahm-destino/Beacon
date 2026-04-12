@@ -86,13 +86,13 @@ export default function PracticeHub() {
               </div>
             </div>
             <div className="flex items-center gap-2 mt-4">
-              <h2 className="font-[var(--font-syne)] font-bold text-xl text-[#0369A1] dark:text-[#0EA5E9]">Mock Exams</h2>
+            <h2 className="font-[var(--font-syne)] font-bold text-xl text-[#0369A1] dark:text-[#0EA5E9]">CBT Exam Simulator</h2>
             </div>
-            <p className="text-sm text-[#0369A1] dark:text-[#7DD3FC] mt-1">AI-generated. Unique every time.</p>
+            <p className="text-sm text-[#0369A1] dark:text-[#7DD3FC] mt-1">Real JAMB, WAEC & NECO patterns. Official timing.</p>
             <div className="flex justify-between items-center mt-5">
-              <span className="text-xs text-[#0C4A6E]/60 dark:text-[#F0F9FF]/60 font-['Plus_Jakarta_Sans']">Personalized for you</span>
+              <span className="text-xs text-[#0C4A6E]/60 dark:text-[#F0F9FF]/60 font-['Plus_Jakarta_Sans']">Subject bundling & analytics</span>
               <div className="bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 rounded-xl px-4 py-2 font-[var(--font-syne)] font-bold text-sm flex items-center gap-1 transition-colors">
-                Generate Mock <ArrowRight size={16} />
+                Start Simulation <ArrowRight size={16} />
               </div>
             </div>
           </button>

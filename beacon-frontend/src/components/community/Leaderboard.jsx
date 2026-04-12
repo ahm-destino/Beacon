@@ -89,7 +89,9 @@ export default function Leaderboard() {
 
       const buddies = Array.isArray(buddiesRes?.data) ? buddiesRes.data : [];
       const bSet = new Set(
-        buddies.map((b) => String(b.user?.id || '')).filter(Boolean)
+        (Array.isArray(buddies) ? buddies : [])
+          .map((b) => String(b.user?.id || b.user_id || ''))
+          .filter(Boolean)
       );
       const myIdStr = meData?.id ? String(meData.id) : null;
 
@@ -257,7 +259,7 @@ export default function Leaderboard() {
               </span>
             </div>
             <div className="mt-3 flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-              {tierTrack.map((tier) => {
+              {(Array.isArray(tierTrack) ? tierTrack : []).map((tier) => {
                 const meta = TIER_META[tier.tier] || { icon: Shield, color: 'text-sky-300' };
                 const TierIcon = meta.icon;
                 const isLocked = tier.is_locked;
