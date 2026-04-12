@@ -62,6 +62,7 @@ export default function Leaderboard() {
   const [myStreakFallback, setMyStreakFallback] = useState(0);
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining());
   const [isMeVisible, setIsMeVisible] = useState(true);
+  const [buddySet, setBuddySet] = useState(new Set());
   const [leagueTrack, setLeagueTrack] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -93,6 +94,7 @@ export default function Leaderboard() {
           .map((b) => String(b.user?.id || b.user_id || ''))
           .filter(Boolean)
       );
+      setBuddySet(bSet);
       const myIdStr = meData?.id ? String(meData.id) : null;
 
       let raw = [];
@@ -360,8 +362,11 @@ export default function Leaderboard() {
                     {user.photo ? <img src={user.photo} className="w-full h-full object-cover" /> : initials(user.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className={`text-sm font-bold truncate ${isMe ? 'text-white' : 'text-[#0C4A6E] dark:text-[#F0F9FF]'}`}>
+                    <h4 className={`text-sm font-bold truncate flex items-center gap-1.5 ${isMe ? 'text-white' : 'text-[#0C4A6E] dark:text-[#F0F9FF]'}`}>
                       {user.name}
+                      {buddySet.has(String(user.user_id)) && (
+                        <Users size={12} className={isMe ? 'text-white/60' : 'text-sky-400'} />
+                      )}
                     </h4>
                     <p className={`text-[10px] font-semibold truncate uppercase tracking-wider mt-0.5 ${isMe ? 'text-sky-100' : 'text-sky-500'}`}>
                       {user.school_name || 'Individual Student'}

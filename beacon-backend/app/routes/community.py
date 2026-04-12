@@ -414,57 +414,64 @@ def list_buddies():
     
     return success_response(results)
 
-    pending_ids = [r.user_id for r in pending]
-    accuracies = _accuracy_map(pending_ids)
-    streaks = {
-        str(s.user_id): s.current_streak
-        for s in Streak.query.filter(Streak.user_id.in_(pending_ids)).all()
-    } if pending_ids else {}
-
-    return success_response({
-        'has_buddy': False,
-        'pending_requests': [
-            {
-                'id': str(r.id),
-                'from_user': _public_user_summary(
-                    r.user,
-                    accuracy=accuracies.get(str(r.user_id), 0.0),
-                    streak=streaks.get(str(r.user_id), 0),
-                ),
-            }
-            for r in pending
-        ],
-    })
 
 
 @community_bp.route('/buddies/requests', methods=['GET'])
 @jwt_required()
 def get_buddy_requests():
     uid = get_uid()
-    pending = StudyBuddy.query.filter_by(
+    
+    # 1. Incoming Requests (Sent to me)
+    incoming = StudyBuddy.query.filter_by(
         buddy_id=uid,
         status='pending'
     ).order_by(StudyBuddy.created_at.desc()).all()
-
-    pending_ids = [r.user_id for r in pending]
-    accuracies = _accuracy_map(pending_ids)
-    streaks = {
+    
+    in_user_ids = [r.user_id for r in incoming]
+    in_accuracies = _accuracy_map(in_user_ids)
+    in_streaks = {
         str(s.user_id): s.current_streak
-        for s in Streak.query.filter(Streak.user_id.in_(pending_ids)).all()
-    } if pending_ids else {}
+        for s in Streak.query.filter(Streak.user_id.in_(in_user_ids)).all()
+    } if in_user_ids else {}
+
+    # 2. Outgoing Requests (Sent by me)
+    outgoing = StudyBuddy.query.filter_by(
+        user_id=uid,
+        status='pending'
+    ).order_by(StudyBuddy.created_at.desc()).all()
+    
+    out_buddy_ids = [r.buddy_id for r in outgoing]
+    out_accuracies = _accuracy_map(out_buddy_ids)
+    out_streaks = {
+        str(s.user_id): s.current_streak
+        for s in Streak.query.filter(Streak.user_id.in_(out_buddy_ids)).all()
+    } if out_buddy_ids else {}
 
     return success_response({
-        'requests': [
+        'incoming': [
             {
                 'id': str(r.id),
                 'from_user': _public_user_summary(
                     r.user,
-                    accuracy=accuracies.get(str(r.user_id), 0.0),
-                    streak=streaks.get(str(r.user_id), 0),
+                    accuracy=in_accuracies.get(str(r.user_id), 0.0),
+                    streak=in_streaks.get(str(r.user_id), 0),
                 ),
+                'created_at': r.created_at.isoformat() if r.created_at else None
             }
-            for r in pending
+            for r in incoming
         ],
+        'outgoing': [
+            {
+                'id': str(r.id),
+                'to_user': _public_user_summary(
+                    r.buddy,
+                    accuracy=out_accuracies.get(str(r.buddy_id), 0.0),
+                    streak=out_streaks.get(str(r.buddy_id), 0),
+                ),
+                'created_at': r.created_at.isoformat() if r.created_at else None
+            }
+            for r in outgoing
+        ]
     })
 
 
@@ -862,6 +869,25 @@ def get_student_profile(student_id):
             elif bio_visibility == 'friends':
                 bio_status = 'friends_only'
 
+    # Check relationship status
+    rel = StudyBuddy.query.filter(
+        db.or_(
+            db.and_(StudyBuddy.user_id == uid, StudyBuddy.buddy_id == student_id),
+            db.and_(StudyBuddy.user_id == student_id, StudyBuddy.buddy_id == uid)
+        )
+    ).first()
+
+    relationship = {'status': 'none', 'id': None}
+    if rel:
+        relationship['id'] = str(rel.id)
+        if rel.status == 'active':
+            relationship['status'] = 'active'
+        elif rel.status == 'pending':
+            if str(rel.user_id) == str(uid):
+                relationship['status'] = 'pending_sent'
+            else:
+                relationship['status'] = 'pending_received'
+
     return success_response({
         'id': str(user.id),
         'full_name': user.full_name,
@@ -878,6 +904,7 @@ def get_student_profile(student_id):
         'points': points,
         'rank': rank,
         'badges': badge_icons,
+        'relationship': relationship,
         'last_seen': user.last_seen.isoformat() if user.last_seen else None,
     })
 
