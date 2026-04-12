@@ -129,6 +129,8 @@ import ChallengeLive from './components/community/ChallengeLive.jsx';
 import TutorDirectory from './components/community/TutorDirectory.jsx';
 import TutorProfile from './components/community/TutorProfile.jsx';
 import SavedTutors from './components/community/SavedTutors.jsx';
+import InactivityGuard from './components/auth/InactivityGuard.jsx';
+import GlobalHeartbeat from './components/global/GlobalHeartbeat.jsx';
 import './index.css';
 
 import SendChallenge from './pages/community/challenges/SendChallenge.jsx';
@@ -154,222 +156,225 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <Toaster richColors position="top-right" />
       <PointsEarnedPopup />
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/dashboard" element={
-          <OnboardingGuard>
-            <Home />
-          </OnboardingGuard>
-        } />
-        <Route path="/streak" element={<StreakDetail />} />
-        <Route path="/prediction" element={<ScorePrediction />} />
-        <Route path="/weak-areas" element={<WeakAreas />} />
-
-        {/* AI Tutor */}
-        <Route path="/ai-tutor" element={<AITutor />} />
-        <Route path="/ai-tutor/chat/new" element={<ActiveChat />} />
-        <Route path="/ai-tutor/chat" element={<ActiveChat />} />
-        <Route path="/ai-tutor/chat/:conversationId" element={<ActiveChat />} />
-        <Route path="/ai-tutor/camera" element={<CameraSolver />} />
-        <Route path="/ai-tutor/camera/solution" element={<CameraSolution />} />
-        <Route path="/ai-tutor/handwriting" element={<WriteMode />} />
-        <Route path="/ai-tutor/voice/setup" element={<VoiceSetup />} />
-        <Route path="/ai-tutor/voice/session" element={<VoiceSession />} />
-        <Route path="/ai-tutor/concepts" element={<ConceptsLibrary />} />
-        <Route path="/ai-tutor/concepts/:conceptId" element={<ConceptView />} />
-        <Route path="/ai-tutor/concept/:id" element={<ConceptView />} />
-        <Route path="/ai-tutor/history" element={<ConversationHistory />} />
-
-        {/* Community */}
-        <Route path="/community" element={<CommunityHome />} />
-        <Route path="/community/leaderboard" element={<Leaderboard />} />
-        <Route path="/community/qa" element={<QAFeed />} />
-        <Route path="/community/qa/ask" element={<AskQuestion />} />
-        <Route path="/community/qa/:id" element={<QADetail />} />
-        <Route path="/community/buddies" element={<StudyBuddies />} />
-        <Route path="/community/buddies/find" element={<FindBuddy />} />
-        <Route path="/community/buddies/:id" element={<StudyBuddySpace />} />
-        <Route path="/community/buddies/profile" element={<BuddyProfile />} />
-        <Route path="/community/buddies/chat" element={<BuddyChat />} />
-        <Route path="/community/rooms" element={<StudyRooms />} />
-        <Route path="/community/rooms/create" element={<CreateStudyRoom />} />
-        <Route path="/community/rooms/:id" element={<ActiveStudyRoom />} />
-        <Route path="/community/challenges" element={<Challenges />} />
-        <Route path="/community/challenges/send" element={<SendChallenge />} />
-        <Route path="/community/challenges/:id" element={<ActiveChallenge />} />
-        <Route path="/community/challenges/:id/results" element={<ChallengeResults />} />
-        <Route path="/community/challenges/lobby" element={<ChallengeLobby />} />
-        <Route path="/community/challenges/live" element={<ChallengeLive />} />
-        <Route path="/community/tutors" element={<TutorDirectory />} />
-        <Route path="/community/tutors/saved" element={<SavedTutors />} />
-        <Route path="/community/tutor/:id" element={<TutorProfile />} />
-        <Route path="/community/students/:id" element={<StudentPublicProfile />} />
-
-        {/* Practice */}
-        <Route path="/practice" element={<PracticeHub />} />
-        {/* <Route path="/practice/setup" element={<PracticeSetup />} /> */}
-        {/* <Route path="/practice/exam-setup" element={<ExamSetup />} /> */}
-        <Route path="/practice/setup/exam-type" element={<ExamTypeSelect />} />
-        <Route path="/practice/setup/type" element={<PracticeTypeSelect />} />
-        <Route path="/practice/setup/subject-year" element={<SubjectYearSelect />} />
-        <Route path="/practice/setup/topic" element={<TopicDifficultySelect />} />
-        <Route path="/practice/setup/timer" element={<TimerSettings />} />
-        <Route path="/practice/generating" element={<GeneratingQuestions />} />
-        <Route path="/practice/session" element={<PracticeSession />} />
-        <Route path="/practice/session/:id" element={<PracticeSession />} />
-        <Route path="/practice/exam" element={<ExamSession />} />
-        <Route path="/practice/exam-session/:id" element={<ExamSession />} />
-        <Route path="/practice/jamb-full" element={<JAMBFullExamScreen />} />
-        <Route path="/practice/jamb-full/results/:id" element={<JAMBFullExamResults />} />
-        <Route path="/practice/results" element={<PracticeResults />} />
-        <Route path="/practice/results/:id" element={<PracticeResults />} />
-        <Route path="/practice/review" element={<ReviewWrongAnswers />} />
-        <Route path="/practice/mock" element={<MockGenerator />} />
-        <Route path="/practice/mock/history" element={<MockHistory />} />
-        <Route path="/practice/mock/history/:id" element={<MockHistoryDetail />} />
-        <Route path="/practice/strategy" element={<StrategyHome />} />
-        <Route path="/practice/strategy/jamb" element={<JAMBStrategy />} />
-        <Route path="/practice/strategy/waec" element={<WAECStrategy />} />
-        <Route path="/practice/strategy/neco" element={<NECOStrategy />} />
-        <Route path="/practice/strategy/jupeb" element={<JUPEBStrategy />} />
-        <Route path="/practice/documents" element={<DocumentsHome />} />
-        <Route path="/practice/documents/:id" element={<DocumentView />} />
-        <Route path="/practice/document/:id" element={<DocumentView />} />
-        <Route path="/practice/diagrams" element={<DiagramLibrary />} />
-        <Route path="/practice/diagrams/:id" element={<DiagramView />} />
-        <Route path="/practice/reference" element={<QuickReferenceHome />} />
-        <Route path="/practice/reference/periodic" element={<PeriodicTable />} />
-        <Route path="/practice/reference/formulas" element={<FormulaSheet />} />
-        <Route path="/practice/reference/converter" element={<UnitConverter />} />
-        <Route path="/practice/reference/lab" element={<LabEquipment />} />
-        <Route path="/practice/reference/literary" element={<LiteraryTerms />} />
-        <Route path="/practice/bookmarks" element={<Bookmarks />} />
-        <Route path="/practice/history" element={<PracticeHistory />} />
-        <Route path="/practice/history/:id" element={<PracticeHistoryDetail />} />
-
-        {/* Flashcards */}
-        <Route path="/flashcards" element={<FlashcardHome />} />
-        <Route path="/flashcards/study" element={<FlashcardStudy />} />
-        <Route path="/flashcards/deck/:id" element={<FlashcardHome />} />
-
-        {/* Literature */}
-        <Route path="/literature" element={<LiteratureHome />} />
-        <Route path="/literature/:id" element={<LiteratureDetail />} />
-
-        {/* Profile */}
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/edit" element={<EditProfile />} />
-        <Route path="/profile/analytics" element={<ProfileAnalytics />} />
-        <Route path="/profile/errors" element={<ErrorPatterns />} />
-        <Route path="/profile/badges" element={<Badges />} />
-        <Route path="/profile/subscription" element={<Subscription />} />
-        <Route path="/subscription/verify" element={<SubscriptionVerify />} />
-        <Route path="/profile/referrals" element={<Referrals />} />
-
-        {/* Settings */}
-        <Route path="/settings" element={<SettingsMain />} />
-        <Route path="/settings/edit-profile" element={<EditProfileSettings />} />
-        <Route path="/settings/change-password" element={<ChangePassword />} />
-        <Route path="/settings/change-email" element={<ChangeEmail />} />
-        <Route path="/settings/change-phone" element={<ChangePhone />} />
-        <Route path="/settings/notifications" element={<NotificationPreferences />} />
-        <Route path="/settings/do-not-disturb" element={<DoNotDisturb />} />
-        <Route path="/settings/study-reminder" element={<StudyReminder />} />
-        <Route path="/settings/explanation-level" element={<ExplanationLevel />} />
-        <Route path="/settings/daily-target" element={<DailyTarget />} />
-        <Route path="/settings/language" element={<LanguageSettings />} />
-        <Route path="/settings/teaching-style" element={<TeachingStyle />} />
-        <Route path="/settings/data-usage" element={<DataUsage />} />
-        <Route path="/settings/offline-content" element={<OfflineContent />} />
-        <Route path="/settings/profile-visibility" element={<ProfileVisibility />} />
-        <Route path="/settings/data-sharing" element={<DataSharing />} />
-        <Route path="/settings/download-data" element={<DownloadData />} />
-        <Route path="/settings/help" element={<HelpCenter />} />
-        <Route path="/settings/contact" element={<ContactSupport />} />
-        <Route path="/settings/report-bug" element={<ReportBug />} />
-        <Route path="/settings/terms" element={<TermsOfService />} />
-        <Route path="/settings/privacy" element={<PrivacyPolicy />} />
-        <Route path="/settings/delete-account" element={<DeleteAccount />} />
-        <Route path="/notifications" element={<NotificationsCenter />} />
-        <Route path="/search" element={<GlobalSearch />} />
-        <Route path="/achievement" element={<AchievementPopup />} />
-
-        {/* Admin */}
-        <Route path="/beacon-internal-portal-77" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/questions" element={<AdminGuard><AdminQuestions /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/reports" element={<AdminGuard><AdminReports /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/ai-corrections" element={<AdminGuard><AdminAICorrections /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/analytics" element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
-        <Route path="/beacon-internal-portal-77/audit" element={<AdminGuard><AdminAudit /></AdminGuard>} />
-
-        <Route path="/auth/signup" element={<SignUp />} />
-        <Route path="/auth/signin" element={<SignIn />} />
-        <Route path="/auth/verify" element={<OTPVerification />} />
-        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-        <Route path="/onboarding" element={
-          <OnboardingProvider>
-            <OnboardingGuard requireIncomplete={true}>
-              <Welcome />
+      <GlobalHeartbeat />
+      <InactivityGuard>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/dashboard" element={
+            <OnboardingGuard>
+              <Home />
             </OnboardingGuard>
-          </OnboardingProvider>
-        } />
-        <Route path="/onboarding/exam" element={
-          <OnboardingProvider>
+          } />
+          <Route path="/streak" element={<StreakDetail />} />
+          <Route path="/prediction" element={<ScorePrediction />} />
+          <Route path="/weak-areas" element={<WeakAreas />} />
+
+          {/* AI Tutor */}
+          <Route path="/ai-tutor" element={<AITutor />} />
+          <Route path="/ai-tutor/chat/new" element={<ActiveChat />} />
+          <Route path="/ai-tutor/chat" element={<ActiveChat />} />
+          <Route path="/ai-tutor/chat/:conversationId" element={<ActiveChat />} />
+          <Route path="/ai-tutor/camera" element={<CameraSolver />} />
+          <Route path="/ai-tutor/camera/solution" element={<CameraSolution />} />
+          <Route path="/ai-tutor/handwriting" element={<WriteMode />} />
+          <Route path="/ai-tutor/voice/setup" element={<VoiceSetup />} />
+          <Route path="/ai-tutor/voice/session" element={<VoiceSession />} />
+          <Route path="/ai-tutor/concepts" element={<ConceptsLibrary />} />
+          <Route path="/ai-tutor/concepts/:conceptId" element={<ConceptView />} />
+          <Route path="/ai-tutor/concept/:id" element={<ConceptView />} />
+          <Route path="/ai-tutor/history" element={<ConversationHistory />} />
+
+          {/* Community */}
+          <Route path="/community" element={<CommunityHome />} />
+          <Route path="/community/leaderboard" element={<Leaderboard />} />
+          <Route path="/community/qa" element={<QAFeed />} />
+          <Route path="/community/qa/ask" element={<AskQuestion />} />
+          <Route path="/community/qa/:id" element={<QADetail />} />
+          <Route path="/community/buddies" element={<StudyBuddies />} />
+          <Route path="/community/buddies/find" element={<FindBuddy />} />
+          <Route path="/community/buddies/:id" element={<StudyBuddySpace />} />
+          <Route path="/community/buddies/profile" element={<BuddyProfile />} />
+          <Route path="/community/buddies/chat" element={<BuddyChat />} />
+          <Route path="/community/rooms" element={<StudyRooms />} />
+          <Route path="/community/rooms/create" element={<CreateStudyRoom />} />
+          <Route path="/community/rooms/:id" element={<ActiveStudyRoom />} />
+          <Route path="/community/challenges" element={<Challenges />} />
+          <Route path="/community/challenges/send" element={<SendChallenge />} />
+          <Route path="/community/challenges/:id" element={<ActiveChallenge />} />
+          <Route path="/community/challenges/:id/results" element={<ChallengeResults />} />
+          <Route path="/community/challenges/lobby" element={<ChallengeLobby />} />
+          <Route path="/community/challenges/live" element={<ChallengeLive />} />
+          <Route path="/community/tutors" element={<TutorDirectory />} />
+          <Route path="/community/tutors/saved" element={<SavedTutors />} />
+          <Route path="/community/tutor/:id" element={<TutorProfile />} />
+          <Route path="/community/students/:id" element={<StudentPublicProfile />} />
+
+          {/* Practice */}
+          <Route path="/practice" element={<PracticeHub />} />
+          {/* <Route path="/practice/setup" element={<PracticeSetup />} /> */}
+          {/* <Route path="/practice/exam-setup" element={<ExamSetup />} /> */}
+          <Route path="/practice/setup/exam-type" element={<ExamTypeSelect />} />
+          <Route path="/practice/setup/type" element={<PracticeTypeSelect />} />
+          <Route path="/practice/setup/subject-year" element={<SubjectYearSelect />} />
+          <Route path="/practice/setup/topic" element={<TopicDifficultySelect />} />
+          <Route path="/practice/setup/timer" element={<TimerSettings />} />
+          <Route path="/practice/generating" element={<GeneratingQuestions />} />
+          <Route path="/practice/session" element={<PracticeSession />} />
+          <Route path="/practice/session/:id" element={<PracticeSession />} />
+          <Route path="/practice/exam" element={<ExamSession />} />
+          <Route path="/practice/exam-session/:id" element={<ExamSession />} />
+          <Route path="/practice/jamb-full" element={<JAMBFullExamScreen />} />
+          <Route path="/practice/jamb-full/results/:id" element={<JAMBFullExamResults />} />
+          <Route path="/practice/results" element={<PracticeResults />} />
+          <Route path="/practice/results/:id" element={<PracticeResults />} />
+          <Route path="/practice/review" element={<ReviewWrongAnswers />} />
+          <Route path="/practice/mock" element={<MockGenerator />} />
+          <Route path="/practice/mock/history" element={<MockHistory />} />
+          <Route path="/practice/mock/history/:id" element={<MockHistoryDetail />} />
+          <Route path="/practice/strategy" element={<StrategyHome />} />
+          <Route path="/practice/strategy/jamb" element={<JAMBStrategy />} />
+          <Route path="/practice/strategy/waec" element={<WAECStrategy />} />
+          <Route path="/practice/strategy/neco" element={<NECOStrategy />} />
+          <Route path="/practice/strategy/jupeb" element={<JUPEBStrategy />} />
+          <Route path="/practice/documents" element={<DocumentsHome />} />
+          <Route path="/practice/documents/:id" element={<DocumentView />} />
+          <Route path="/practice/document/:id" element={<DocumentView />} />
+          <Route path="/practice/diagrams" element={<DiagramLibrary />} />
+          <Route path="/practice/diagrams/:id" element={<DiagramView />} />
+          <Route path="/practice/reference" element={<QuickReferenceHome />} />
+          <Route path="/practice/reference/periodic" element={<PeriodicTable />} />
+          <Route path="/practice/reference/formulas" element={<FormulaSheet />} />
+          <Route path="/practice/reference/converter" element={<UnitConverter />} />
+          <Route path="/practice/reference/lab" element={<LabEquipment />} />
+          <Route path="/practice/reference/literary" element={<LiteraryTerms />} />
+          <Route path="/practice/bookmarks" element={<Bookmarks />} />
+          <Route path="/practice/history" element={<PracticeHistory />} />
+          <Route path="/practice/history/:id" element={<PracticeHistoryDetail />} />
+
+          {/* Flashcards */}
+          <Route path="/flashcards" element={<FlashcardHome />} />
+          <Route path="/flashcards/study" element={<FlashcardStudy />} />
+          <Route path="/flashcards/deck/:id" element={<FlashcardHome />} />
+
+          {/* Literature */}
+          <Route path="/literature" element={<LiteratureHome />} />
+          <Route path="/literature/:id" element={<LiteratureDetail />} />
+
+          {/* Profile */}
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/profile/analytics" element={<ProfileAnalytics />} />
+          <Route path="/profile/errors" element={<ErrorPatterns />} />
+          <Route path="/profile/badges" element={<Badges />} />
+          <Route path="/profile/subscription" element={<Subscription />} />
+          <Route path="/subscription/verify" element={<SubscriptionVerify />} />
+          <Route path="/profile/referrals" element={<Referrals />} />
+
+          {/* Settings */}
+          <Route path="/settings" element={<SettingsMain />} />
+          <Route path="/settings/edit-profile" element={<EditProfileSettings />} />
+          <Route path="/settings/change-password" element={<ChangePassword />} />
+          <Route path="/settings/change-email" element={<ChangeEmail />} />
+          <Route path="/settings/change-phone" element={<ChangePhone />} />
+          <Route path="/settings/notifications" element={<NotificationPreferences />} />
+          <Route path="/settings/do-not-disturb" element={<DoNotDisturb />} />
+          <Route path="/settings/study-reminder" element={<StudyReminder />} />
+          <Route path="/settings/explanation-level" element={<ExplanationLevel />} />
+          <Route path="/settings/daily-target" element={<DailyTarget />} />
+          <Route path="/settings/language" element={<LanguageSettings />} />
+          <Route path="/settings/teaching-style" element={<TeachingStyle />} />
+          <Route path="/settings/data-usage" element={<DataUsage />} />
+          <Route path="/settings/offline-content" element={<OfflineContent />} />
+          <Route path="/settings/profile-visibility" element={<ProfileVisibility />} />
+          <Route path="/settings/data-sharing" element={<DataSharing />} />
+          <Route path="/settings/download-data" element={<DownloadData />} />
+          <Route path="/settings/help" element={<HelpCenter />} />
+          <Route path="/settings/contact" element={<ContactSupport />} />
+          <Route path="/settings/report-bug" element={<ReportBug />} />
+          <Route path="/settings/terms" element={<TermsOfService />} />
+          <Route path="/settings/privacy" element={<PrivacyPolicy />} />
+          <Route path="/settings/delete-account" element={<DeleteAccount />} />
+          <Route path="/notifications" element={<NotificationsCenter />} />
+          <Route path="/search" element={<GlobalSearch />} />
+          <Route path="/achievement" element={<AchievementPopup />} />
+
+          {/* Admin */}
+          <Route path="/beacon-internal-portal-77" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/questions" element={<AdminGuard><AdminQuestions /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/reports" element={<AdminGuard><AdminReports /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/ai-corrections" element={<AdminGuard><AdminAICorrections /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/analytics" element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
+          <Route path="/beacon-internal-portal-77/audit" element={<AdminGuard><AdminAudit /></AdminGuard>} />
+
+          <Route path="/auth/signup" element={<SignUp />} />
+          <Route path="/auth/signin" element={<SignIn />} />
+          <Route path="/auth/verify" element={<OTPVerification />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/onboarding" element={
+            <OnboardingProvider>
+              <OnboardingGuard requireIncomplete={true}>
+                <Welcome />
+              </OnboardingGuard>
+            </OnboardingProvider>
+          } />
+          <Route path="/onboarding/exam" element={
+            <OnboardingProvider>
+              <OnboardingGuard requireIncomplete={true}>
+                <ExamSelection />
+              </OnboardingGuard>
+            </OnboardingProvider>
+          } />
+          <Route path="/onboarding/subjects" element={
+            <OnboardingProvider>
+              <OnboardingGuard requireIncomplete={true}>
+                <SubjectSelection />
+              </OnboardingGuard>
+            </OnboardingProvider>
+          } />
+          <Route path="/onboarding/school" element={
+            <OnboardingProvider>
+              <OnboardingGuard requireIncomplete={true}>
+                <SchoolName />
+              </OnboardingGuard>
+            </OnboardingProvider>
+          } />
+          <Route path="/onboarding/habits" element={
+            <OnboardingProvider>
+              <OnboardingGuard requireIncomplete={true}>
+                <StudyHabits />
+              </OnboardingGuard>
+            </OnboardingProvider>
+          } />
+          <Route path="/onboarding/diagnostic-intro" element={
             <OnboardingGuard requireIncomplete={true}>
-              <ExamSelection />
+              <DiagnosticIntro />
             </OnboardingGuard>
-          </OnboardingProvider>
-        } />
-        <Route path="/onboarding/subjects" element={
-          <OnboardingProvider>
+          } />
+          <Route path="/onboarding/diagnostic" element={
             <OnboardingGuard requireIncomplete={true}>
-              <SubjectSelection />
+              <DiagnosticQuestion />
             </OnboardingGuard>
-          </OnboardingProvider>
-        } />
-        <Route path="/onboarding/school" element={
-          <OnboardingProvider>
+          } />
+          <Route path="/onboarding/diagnostic/:id" element={
             <OnboardingGuard requireIncomplete={true}>
-              <SchoolName />
+              <DiagnosticQuestion />
             </OnboardingGuard>
-          </OnboardingProvider>
-        } />
-        <Route path="/onboarding/habits" element={
-          <OnboardingProvider>
+          } />
+          <Route path="/onboarding/analyzing" element={
             <OnboardingGuard requireIncomplete={true}>
-              <StudyHabits />
+              <AnalyzingResults />
             </OnboardingGuard>
-          </OnboardingProvider>
-        } />
-        <Route path="/onboarding/diagnostic-intro" element={
-          <OnboardingGuard requireIncomplete={true}>
-            <DiagnosticIntro />
-          </OnboardingGuard>
-        } />
-        <Route path="/onboarding/diagnostic" element={
-          <OnboardingGuard requireIncomplete={true}>
-            <DiagnosticQuestion />
-          </OnboardingGuard>
-        } />
-        <Route path="/onboarding/diagnostic/:id" element={
-          <OnboardingGuard requireIncomplete={true}>
-            <DiagnosticQuestion />
-          </OnboardingGuard>
-        } />
-        <Route path="/onboarding/analyzing" element={
-          <OnboardingGuard requireIncomplete={true}>
-            <AnalyzingResults />
-          </OnboardingGuard>
-        } />
-        <Route path="/onboarding/results" element={
-          <OnboardingGuard requireIncomplete={true}>
-            <ResultsReveal />
-          </OnboardingGuard>
-        } />
-      </Routes>
+          } />
+          <Route path="/onboarding/results" element={
+            <OnboardingGuard requireIncomplete={true}>
+              <ResultsReveal />
+            </OnboardingGuard>
+          } />
+        </Routes>
+      </InactivityGuard>
     </BrowserRouter>
-  </StrictMode>,
+  </StrictMode>
 );

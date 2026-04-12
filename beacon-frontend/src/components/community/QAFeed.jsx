@@ -5,6 +5,7 @@ import { MessageCircle, ThumbsUp, Eye, Plus } from 'lucide-react';
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
 import { Community } from '../../services/api';
+import { formatTimeAgo } from '../../utils/time';
 
 export default function QAFeed() {
   const navigate = useNavigate();
@@ -49,16 +50,7 @@ export default function QAFeed() {
     },
   ];
 
-  const timeAgo = (iso) => {
-    if (!iso) return '';
-    const t = new Date(iso).getTime();
-    if (Number.isNaN(t)) return '';
-    const s = Math.floor((Date.now() - t) / 1000);
-    if (s < 60) return 'Just now';
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-    return `${Math.floor(s / 86400)}d ago`;
-  };
+  const timeAgo = (iso) => formatTimeAgo(iso);
 
   const initials = (name) => {
     if (!name) return 'ST';

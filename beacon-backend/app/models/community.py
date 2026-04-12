@@ -207,8 +207,40 @@ class Challenge(db.Model):
             'opponent_score': self.opponent_score,
             'my_completed': my_completed,
             'opponent_completed': opponent_completed,
+            'current_user_id': str(current_user_id) if current_user_id else None,
             'winner_id': str(self.winner_id) if self.winner_id else None,
             'expires_at': utc_iso(self.expires_at),
             'created_at': utc_iso(self.created_at),
             'updated_at': utc_iso(self.updated_at),
+        }
+
+
+class StudySession(db.Model):
+    __tablename__ = 'study_sessions'
+
+    id              = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    host_id         = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    subject         = db.Column(db.String(50), nullable=False)
+    topic           = db.Column(db.String(100))
+    limit           = db.Column(db.Integer, default=5)
+    participant_ids = db.Column(db.ARRAY(UUID(as_uuid=True)), default=list)
+    status          = db.Column(db.String(20), default='active')  # active, expired, completed
+    created_at      = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at      = db.Column(db.DateTime)
+
+    host            = db.relationship('User', foreign_keys=[host_id])
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'host_id': str(self.host_id),
+            'host_name': self.host.full_name if self.host else 'Student',
+            'host_photo': self.host.profile_photo_url if self.host else None,
+            'subject': self.subject,
+            'topic': self.topic,
+            'limit': self.limit,
+            'participant_count': len(self.participant_ids) if self.participant_ids else 0,
+            'status': self.status,
+            'created_at': utc_iso(self.created_at),
+            'expires_at': utc_iso(self.expires_at),
         }

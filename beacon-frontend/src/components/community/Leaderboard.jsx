@@ -95,17 +95,17 @@ export default function Leaderboard() {
 
       let raw = [];
 
-      if (tab === 'League') {
-        const [res, trackRes] = await Promise.all([
-          LeaderboardAPI.league(),
-          LeaderboardAPI.leagueTrack().catch(() => ({ data: null })),
-        ]);
-        raw = res?.data?.items || [];
-        setRoomInfo(res?.data?.room_info || null);
-        setLeagueTrack(Array.isArray(trackRes?.data?.tiers) ? trackRes.data.tiers : []);
-      } else {
-        const res = await LeaderboardAPI.global(1, 200);
-        raw = Array.isArray(res?.data) ? res.data : [];
+        if (tab === 'League') {
+          const [res, trackRes] = await Promise.all([
+            LeaderboardAPI.league(),
+            LeaderboardAPI.leagueTrack().catch(() => ({ data: null })),
+          ]);
+          raw = Array.isArray(res?.data?.items) ? res.data.items : [];
+          setRoomInfo(res?.data?.room_info || null);
+          setLeagueTrack(Array.isArray(trackRes?.data?.tiers) ? trackRes.data.tiers : []);
+        } else {
+          const res = await LeaderboardAPI.global(1, 200);
+          raw = Array.isArray(res?.data) ? res.data : [];
 
         if (tab === 'Friends') {
           raw = raw.filter(

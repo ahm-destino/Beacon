@@ -7,8 +7,8 @@ class StreakService:
 
     FREEZE_COST = 500   # points
     REPAIR_COST = 500   # points
-    MIN_STUDY_MINUTES = 15
-    MIN_STUDY_QUESTIONS = 20
+    MIN_STUDY_MINUTES = 1
+    MIN_STUDY_QUESTIONS = 1
 
     @staticmethod
     def _ensure_missed_history(user_id, start_date, end_date):

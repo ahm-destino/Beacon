@@ -36,17 +36,20 @@ export default function StudyBuddies() {
     ]);
 
     if (buddyRes.status === 'fulfilled') {
-      setBuddies(buddyRes.value?.data || []);
+      const data = buddyRes.value?.data;
+      setBuddies(Array.isArray(data) ? data : []);
     } else {
       setError('Could not load active buddies.');
     }
 
     if (pendingRes.status === 'fulfilled') {
-      setPendingRequests(pendingRes.value?.data || []);
+      const data = pendingRes.value?.data;
+      setPendingRequests(Array.isArray(data) ? data : []);
     }
 
     if (suggestionsRes.status === 'fulfilled') {
-      setSuggestions(suggestionsRes.value?.data?.suggestions || []);
+      const data = suggestionsRes.value?.data?.suggestions;
+      setSuggestions(Array.isArray(data) ? data : []);
     }
 
     setLoading(false);

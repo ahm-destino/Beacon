@@ -124,12 +124,12 @@ export default function ChallengeResults() {
               {iWon ? '🏆' : isDraw ? '🤝' : iLost ? '💀' : '⏳'}
             </span>
             <h1 className="font-[var(--font-syne)] font-black text-3xl text-white tracking-tight uppercase">
-              {iWon ? 'Champion!' : isDraw ? 'It\'s a Draw!' : iLost ? 'Defeat' : 'Turn Submitted!'}
+              {isWaiting ? 'Round Submitted!' : iWon ? 'Champion!' : isDraw ? "It's a Draw!" : iLost ? 'Defeat' : 'Ended'}
             </h1>
             <p className="font-[var(--font-jakarta)] text-white/80 mt-2 font-medium">
               {isWaiting 
-                ? `Waiting for ${opponent?.name || 'opponent'} to finish...` 
-                : iWon ? 'Total dominance! Points added.' : iLost ? 'Better luck next time!' : 'Great minds think alike!'}
+                ? `Match is still live. Waiting for ${opponent?.name || 'opponent'}...` 
+                : iWon ? 'Total dominance! Points added.' : iLost ? 'Better luck next time!' : 'Great match!'}
             </p>
           </div>
         </div>
@@ -158,9 +158,18 @@ export default function ChallengeResults() {
               <div className="font-['Plus_Jakarta_Sans'] font-black text-3xl text-amber-600 dark:text-amber-400">
                 {isWaiting ? '??' : `${oppScore}%`}
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mt-1">Accuracy</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mt-1">Score</div>
             </div>
           </div>
+
+          {!isWaiting && (
+            <div className="mt-6 pt-6 border-t border-sky-50 dark:border-sky-900/10">
+              <div className="h-2.5 w-full bg-sky-50 dark:bg-sky-900/20 rounded-full flex overflow-hidden">
+                <div className="h-full bg-sky-600 transition-all duration-1000" style={{ width: `${(myScore / (myScore + oppScore + 0.1)) * 100}%` }}></div>
+                <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width: `${(oppScore / (myScore + oppScore + 0.1)) * 100}%` }}></div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Info Box */}
@@ -171,7 +180,7 @@ export default function ChallengeResults() {
               </div>
               <div>
                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300">OPPONENT IS PLAYING</p>
-                 <p className="text-sm font-medium text-amber-700/70 dark:text-amber-400/70">Expires in <span className="font-black text-amber-600 dark:text-amber-400">{timeLeft}</span></p>
+                 <p className="text-sm font-medium text-amber-700/70 dark:text-amber-400/70">Wait for them or check back later.</p>
               </div>
            </div>
         ) : (

@@ -1,17 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Notifications as NotificationsAPI } from '../../services/api';
+import { formatTimeAgo } from '../../utils/time';
 
 function timeAgo(iso) {
-  if (!iso) return '';
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return '';
-  const s = Math.floor((Date.now() - t) / 1000);
-  if (s < 60) return 'Just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatTimeAgo(iso);
 }
 
 function iconFor(type) {

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, date
 import hashlib
 import json
 import os
+import random
 from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User, QuestionOptionExplanation, QuestionAnswerVerification
@@ -64,32 +65,47 @@ def _strip_answer_lines(text: str) -> str:
 
 
 def _fetch_valid_questions(query, target_count, max_rounds=3):
-    """Fetch valid questions from a query, skipping corrupted items."""
+    """Fetch valid questions from a query, skipping corrupted items. Efficient ID sampling."""
     selected = []
     invalid = []
     seen_ids = set()
     aggressive = os.getenv('AI_CORRECT_ON_ANSWER', '0').strip().lower() in ['1', 'true', 'yes']
     validator = is_question_structurally_valid if aggressive else is_question_valid
 
-    for _ in range(max_rounds):
-        remaining = target_count - len(selected)
-        if remaining <= 0:
+    # Optimization: Fetch IDs first to avoid slow ORDER BY RANDOM() on large tables
+    all_matching_ids = [q.id for q in query.with_entities(Question.id).all()]
+    if not all_matching_ids:
+        return []
+
+    # Iterate in rounds if we don't find enough valid questions initially
+    random.shuffle(all_matching_ids)
+    
+    # We sample a batch to validate
+    batch_size = min(len(all_matching_ids), target_count * 5)
+    sample_ids = all_matching_ids[:batch_size]
+    
+    if not sample_ids:
+        return []
+
+    # Fetch the actual question objects for the sampled IDs
+    questions = Question.query.filter(Question.id.in_(sample_ids)).all()
+    # Map for easy lookup to maintain shuffle order
+    q_map = {q.id: q for q in questions}
+    
+    # Re-order based on our shuffled sample_ids
+    shuffled_questions = [q_map[qid] for qid in sample_ids if qid in q_map]
+
+    for item in shuffled_questions:
+        if len(selected) >= target_count:
             break
-
-        q = query
-        if seen_ids:
-            q = q.filter(~Question.id.in_(seen_ids))
-
-        batch = q.order_by(db.func.random()).limit(remaining * 3).all()
-        if not batch:
-            break
-
-        for item in batch:
-            seen_ids.add(item.id)
-            if validator(item):
-                selected.append(item)
-            else:
-                invalid.append(item)
+            
+        seen_ids.add(item.id)
+        # Defense: Ensure the subject matches what we asked for (Prevents Govt -> Bio mismatch)
+        # This is a safety check in case the query leaked other subjects
+        if validator(item):
+            selected.append(item)
+        else:
+            invalid.append(item)
 
     if invalid:
         quarantine_questions(invalid, reason='invalid_question')

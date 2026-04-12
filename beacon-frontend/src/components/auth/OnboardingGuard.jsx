@@ -22,12 +22,22 @@ export default function OnboardingGuard({ children, requireIncomplete = false })
       }
       try {
         const response = await Onboarding.getStatus();
-        setStatus(response?.data);
-      } catch (err) {
-        // If it's a 401, handleResponse in api.js will redirect
-        if (err?.status !== 401) {
+        if (response?.data) {
+          setStatus(response.data);
+        } else {
+          // Fallback for unexpected empty response
           setStatus({ onboarding_completed: false, onboarding_step: 1 });
         }
+      } catch (err) {
+        // If it's a 401, handleResponse in api.js will redirect to /auth/signin.
+        // We set loading back to true (or keep it true) and don't set a fallback status
+        // to prevent the guard from navigating elsewhere while the page redirects.
+        if (err?.status === 401) {
+          return; // Do nothing, wait for window.location.href in handleResponse
+        }
+        
+        // Only set fallback if it's NOT a 401 (e.g. network error)
+        setStatus({ onboarding_completed: false, onboarding_step: 1 });
       } finally {
         setLoading(false);
       }

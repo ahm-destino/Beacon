@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -18,6 +19,7 @@ from ..models import (
     Notification,
     Tutor,
     TutorReview,
+    StudySession,
 )
 from ..utils.helpers import success_response, error_response, paginate_query
 from ..services.performance_service import record_study_event, award_points
@@ -1205,3 +1207,117 @@ def ping_challenge_opponent(challenge_id):
         pass  # Redis unavailable — notification already sent
 
     return success_response({'pinged': True, 'challenge_id': challenge_id})
+
+
+# ─── Study Rooms ────────────────────────────────────────────────────────────
+
+@community_bp.route('/study-sessions', methods=['GET'])
+@jwt_required()
+def list_study_sessions():
+    """List active study sessions, filtering out expired ones."""
+    uid = get_uid()
+    now = datetime.utcnow()
+    
+    # Auto-expire sessions with no joiners after 15 mins
+    expired_threshold = now - timedelta(minutes=15)
+    StudySession.query.filter(
+        StudySession.status == 'active',
+        StudySession.created_at < expired_threshold,
+        func.cardinality(StudySession.participant_ids) == 0
+    ).update({'status': 'expired'}, synchronize_session=False)
+    db.session.commit()
+
+    # Get active sessions where host is currently "active"
+    active_threshold = now - timedelta(hours=2)
+    sessions = StudySession.query.filter(
+        StudySession.status == 'active',
+        StudySession.created_at > active_threshold
+    ).order_by(StudySession.created_at.desc()).all()
+
+    return success_response([s.to_dict() for s in sessions])
+
+
+@community_bp.route('/study-sessions', methods=['POST'])
+@jwt_required()
+def create_study_session():
+    uid = get_uid()
+    data = request.get_json() or {}
+    
+    # Check if host already has an active session
+    existing = StudySession.query.filter_by(host_id=uid, status='active').first()
+    if existing:
+        return error_response('You already have an active study room', 400)
+
+    ss = StudySession(
+        host_id=uid,
+        subject=data.get('subject', 'General'),
+        topic=data.get('topic', 'Collaborative Study'),
+        limit=data.get('limit', 5),
+        participant_ids=[],
+        expires_at=datetime.utcnow() + timedelta(hours=2)
+    )
+    db.session.add(ss)
+    db.session.commit()
+    
+    return success_response(ss.to_dict(), status_code=201)
+
+
+@community_bp.route('/study-sessions/<sid>/join', methods=['PUT'])
+@jwt_required()
+def join_study_session(sid):
+    uid_str = get_uid()
+    try:
+        uid = uuid.UUID(uid_str)
+    except Exception:
+        # Fallback if UID is not a standard UUID string
+        uid = uid_str
+
+    ss = StudySession.query.get_or_404(sid)
+    
+    if ss.status != 'active':
+        return error_response('This room is no longer active', 410)
+    
+    if str(ss.host_id) == str(uid):
+        return success_response(ss.to_dict(), message='You are the host')
+
+    p_ids = list(ss.participant_ids or [])
+    # Convert all to strings for comparison check
+    p_id_strs = [str(x) for x in p_ids]
+    if str(uid) in p_id_strs:
+        return success_response(ss.to_dict(), message='Already in room')
+    
+    if len(p_ids) >= (ss.limit or 5):
+        return error_response('Room is full', 422)
+    
+    p_ids.append(uid)
+    ss.participant_ids = p_ids
+    db.session.commit()
+    
+    return success_response(ss.to_dict(), message='Joined room')
+
+
+@community_bp.route('/study-sessions/<sid>/leave', methods=['PUT'])
+@jwt_required()
+def leave_study_session(sid):
+    uid_str = get_uid()
+    ss = StudySession.query.get_or_404(sid)
+    
+    p_ids = list(ss.participant_ids or [])
+    # Filter out the current user
+    new_ids = [x for x in p_ids if str(x) != uid_str]
+    
+    if len(new_ids) != len(p_ids):
+        ss.participant_ids = new_ids
+        db.session.commit()
+        
+    return success_response(message='Left room')
+
+
+@community_bp.route('/study-sessions/<sid>', methods=['DELETE'])
+@jwt_required()
+def close_study_session(sid):
+    uid = get_uid()
+    ss = StudySession.query.filter_by(id=sid, host_id=uid).first_or_404()
+    ss.status = 'completed'
+    db.session.commit()
+    return success_response(message='Room closed')

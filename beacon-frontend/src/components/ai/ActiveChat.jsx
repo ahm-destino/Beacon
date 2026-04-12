@@ -4,6 +4,7 @@ import { ChevronLeft, Settings, Camera, ArrowRight, ThumbsUp, ThumbsDown, PlayCi
 import api from '../../services/api';
 import { buildCopyText } from '../shared/FormattedExplanation';
 import FormattedExplanation from '../shared/FormattedExplanation';
+import { formatShortTime } from '../../utils/time';
 
 export default function ActiveChat() {
   const navigate = useNavigate();
@@ -48,12 +49,12 @@ export default function ActiveChat() {
       try {
         const res = await api.get(`/api/ai-tutor/conversations/${paramConversationId}`);
         const data = res?.data || {};
-        const backendMessages = (data.messages || []).map((m, idx) => ({
+        const backendMessages = (Array.isArray(data.messages) ? data.messages : []).map((m, idx) => ({
           id: m.id || `msg-${idx}`,
           sender: m.role === 'assistant' ? 'ai' : 'user',
           text: m.content,
           imageUrl: m.image_url,
-          time: new Date(m.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: formatShortTime(m.created_at || Date.now()),
         }));
         setMessages(backendMessages);
         setConversationId(data.id || paramConversationId);
@@ -147,7 +148,7 @@ export default function ActiveChat() {
       sender: 'user',
       text,
       imageUrl: currentImage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatShortTime(new Date()),
     };
     setMessages(prev => [...prev, userMessage]);
     if (!silent) setInputText('');
@@ -163,7 +164,7 @@ export default function ActiveChat() {
         id: streamingAiId,
         sender: 'ai',
         text: '',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: formatShortTime(new Date()),
       },
     ]);
 
@@ -171,7 +172,11 @@ export default function ActiveChat() {
       await api.streamChat(
         activeConversationId,
         text,
-        level,
+        {
+          explanationLevel: level,
+          imageData: currentImage,
+          mimeType: imageFile?.type || 'image/jpeg'
+        },
         (chunk) => {
           setMessages((prev) =>
             prev.map((m) => (m.id === streamingAiId ? { ...m, text: `${m.text}${chunk}` } : m))
@@ -179,8 +184,7 @@ export default function ActiveChat() {
         },
         () => {
           setIsTyping(false);
-        },
-        currentImage
+        }
       );
     } catch (e) {
       setMessages((prev) =>

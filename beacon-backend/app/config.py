@@ -18,7 +18,7 @@ class Config:
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
     # JWT settings
-    JWT_ACCESS_TOKEN_EXPIRES = 3600       # 1 hour
+    JWT_ACCESS_TOKEN_EXPIRES = 86400      # 24 hours (prevents premature session timeouts)
     JWT_REFRESH_TOKEN_EXPIRES = 2592000   # 30 days
 
     # Rate limiting

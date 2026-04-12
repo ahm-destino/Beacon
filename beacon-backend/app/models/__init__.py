@@ -7,7 +7,7 @@ from .conversation import Conversation, Message
 from .subscription import Subscription, PointTransaction, Badge, UserBadge
 from .notification import Notification, NotificationPreference
 from .document import Document, DocumentSection
-from .community import CommunityQuestion, CommunityAnswer, StudyBuddy, StudyBuddyMessage, Referral, Challenge
+from .community import CommunityQuestion, CommunityAnswer, StudyBuddy, StudyBuddyMessage, Referral, Challenge, StudySession
 from .performance import TopicPerformance, ConceptConfidence
 from .leagues import LeagueRoom, LeagueMember
 from .study_tracking import StudyEvent, ChallengeAnswer
@@ -35,4 +35,5 @@ __all__ = [
     'LiteratureText', 'LiteratureChapter', 'UserLiteratureProgress', 'LiteraturePastQuestion',
     # Tutors
     'Tutor', 'TutorReview',
+    'StudySession',
 ]

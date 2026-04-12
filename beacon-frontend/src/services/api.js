@@ -397,6 +397,13 @@ export const Community = {
   pingOpponent: (id) => api.post(`/api/community/challenges/${id}/ping`),
   submitChallengeAnswer: (id, data) => api.post(`/api/community/challenges/${id}/answers`, data),
   completeChallenge: (id) => api.post(`/api/community/challenges/${id}/complete`, {}),
+
+  // Study Rooms
+  getStudySessions: () => api.get('/api/community/study-sessions'),
+  createStudySession: (data) => api.post('/api/community/study-sessions', data),
+  joinStudySession: (id) => api.put(`/api/community/study-sessions/${id}/join`, {}),
+  leaveStudySession: (id) => api.put(`/api/community/study-sessions/${id}/leave`, {}),
+  closeStudySession: (id) => api.delete(`/api/community/study-sessions/${id}`),
 };
 
 export const Onboarding = {

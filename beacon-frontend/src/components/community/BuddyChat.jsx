@@ -1,8 +1,9 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ChevronLeft, Send, Phone, MoreVertical, Paperclip, Smile } from 'lucide-react';
 import { Community, Users } from '../../services/api';
+import { formatTimeAgo, formatShortTime } from '../../utils/time';
 
 const initials = (name) => {
   if (!name) return 'U';
@@ -13,13 +14,7 @@ const initials = (name) => {
 
 const formatLastSeen = (iso) => {
   if (!iso) return 'Last seen: Unknown';
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return 'Last seen: Unknown';
-  const diff = Math.floor((Date.now() - t) / 1000);
-  if (diff < 60) return 'Last seen: Just now';
-  if (diff < 3600) return `Last seen: ${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `Last seen: ${Math.floor(diff / 3600)}h ago`;
-  return `Last seen: ${Math.floor(diff / 86400)}d ago`;
+  return `Last seen: ${formatTimeAgo(iso)}`;
 };
 
 export default function BuddyChat() {
@@ -57,7 +52,8 @@ export default function BuddyChat() {
     }
 
     if (msgRes.status === 'fulfilled') {
-      setMessages(msgRes.value?.data?.messages || []);
+      const msgs = msgRes.value?.data?.messages;
+      setMessages(Array.isArray(msgs) ? msgs : []);
     } else {
       setMessages([]);
     }
@@ -78,11 +74,14 @@ export default function BuddyChat() {
     if (!buddy?.id) return;
     const intervalId = setInterval(() => {
       Promise.all([
-        Community.getBuddyMessages().then((res) => setMessages(res?.data?.messages || [])).catch(() => {}),
-        Community.getBuddyTyping().then((res) => {
-          setBuddyTyping(!!res?.data?.is_typing);
-          if (res?.data?.last_seen) setBuddyLastSeen(res.data.last_seen);
-        }).catch(() => {}),
+      Community.getBuddyMessages().then((res) => {
+        const msgs = res?.data?.messages;
+        setMessages(Array.isArray(msgs) ? msgs : []);
+      }).catch(() => {}),
+      Community.getBuddyTyping().then((res) => {
+        setBuddyTyping(!!res?.data?.is_typing);
+        if (res?.data?.last_seen) setBuddyLastSeen(res.data.last_seen);
+      }).catch(() => {}),
       ]);
     }, 8000);
     return () => clearInterval(intervalId);
@@ -223,7 +222,7 @@ export default function BuddyChat() {
                   {msg.body}
                 </div>
                 <span className="text-[10px] text-sky-400 dark:text-sky-600 mt-1">
-                  {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  {formatShortTime(msg.created_at)}
                 </span>
               </div>
             );
