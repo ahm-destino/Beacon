@@ -141,7 +141,3 @@ export default function StudyRooms() {
     </div>
   );
 }
-    </div>
-  );
-}
-
