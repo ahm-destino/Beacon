@@ -204,6 +204,3 @@ export default function BuddyProfile() {
     </div>
   );
 }
-</div>
-  );
-}
