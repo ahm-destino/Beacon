@@ -378,7 +378,8 @@ class AIService:
         raise Exception(f"All Gemini models/keys failed. Last error: {last_error}")
 
     @classmethod
-    def chat(cls, conversation_id, user_message, explanation_level, user_context, rag_context=None):
+    def chat(cls, conversation_id, user_message, explanation_level, user_context,
+             rag_context=None, persist_user_message=True):
         """Stream AI response for chat. Yields text chunks.
         
         rag_context: optional list of relevant questions retrieved from the
@@ -413,12 +414,16 @@ class AIService:
                 yield text
 
         # Persist messages
-        user_msg = Message(
-            conversation_id=conversation_id,
-            role='user',
-            content=user_message,
-            explanation_level=explanation_level,
-        )
+        if persist_user_message:
+            user_msg = Message(
+                conversation_id=conversation_id,
+                role='user',
+                content=user_message,
+                explanation_level=explanation_level,
+            )
+            db.session.add(user_msg)
+            conv.message_count = (conv.message_count or 0) + 1
+
         ai_msg = Message(
             conversation_id=conversation_id,
             role='assistant',
@@ -426,20 +431,19 @@ class AIService:
             explanation_level=explanation_level,
             tokens_used=None,
         )
-        conv.message_count = (conv.message_count or 0) + 2
+        conv.message_count = (conv.message_count or 0) + 1
         conv.updated_at = datetime.utcnow()
 
         # Auto-generate title from first user message
         if len(history) == 0:
             conv.title = user_message[:60] + ('...' if len(user_message) > 60 else '')
 
-        db.session.add(user_msg)
         db.session.add(ai_msg)
         db.session.commit()
 
     @classmethod
     def chat_with_image(cls, conversation_id, user_message, image_b64, mime_type,
-                        explanation_level, user_context):
+                        explanation_level, user_context, persist_user_message=True):
         """Handle a single chat turn with an image using Gemini Vision.
         
         Strategy (per user request):
@@ -561,12 +565,16 @@ class AIService:
             return
 
         # Persist the image turn in conversation history
-        user_msg = Message(
-            conversation_id=conversation_id,
-            role='user',
-            content=f'[Image sent] {user_message}' if user_message else '[Image sent]',
-            explanation_level=explanation_level,
-        )
+        if persist_user_message:
+            user_msg = Message(
+                conversation_id=conversation_id,
+                role='user',
+                content=f'[Image sent] {user_message}' if user_message else '[Image sent]',
+                explanation_level=explanation_level,
+            )
+            db.session.add(user_msg)
+            conv.message_count = (conv.message_count or 0) + 1
+
         ai_msg = Message(
             conversation_id=conversation_id,
             role='assistant',
@@ -574,13 +582,12 @@ class AIService:
             explanation_level=explanation_level,
             tokens_used=None,
         )
-        conv.message_count = (conv.message_count or 0) + 2
+        conv.message_count = (conv.message_count or 0) + 1
         conv.updated_at = datetime.utcnow()
 
         if len(history) == 0:
             conv.title = (user_message or 'Image question')[:60]
 
-        db.session.add(user_msg)
         db.session.add(ai_msg)
         db.session.commit()
 

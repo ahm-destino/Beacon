@@ -175,9 +175,18 @@ def send_message(conv_id):
                     'accuracy': accuracy,
                 })
 
-        user_context['weak_areas'] = sorted(weak, key=lambda x: x['accuracy'])[:3]
-    except Exception:
+        except Exception:
         user_context['weak_areas'] = []
+
+    # Save the user's message immediately to ensure persistence if the stream is interrupted.
+    user_msg = Message(
+        conversation_id=conv.id,
+        role='user',
+        content=user_message,
+        explanation_level=explanation_level,
+    )
+    db.session.add(user_msg)
+    db.session.commit()
 
     # ─── RAG: Retrieve relevant JAMB questions ───────────────────────────────
     # Before calling the AI, we silently search the question bank for the
@@ -200,13 +209,15 @@ def send_message(conv_id):
                 # Use Gemini for this turn because there's an image
                 safe_image = _strip_base64_prefix(image_data)
                 for chunk in AIService.chat_with_image(
-                    str(conv.id), user_message, safe_image, mime_type, explanation_level, user_context
+                    str(conv.id), user_message, safe_image, mime_type, explanation_level, user_context,
+                    persist_user_message=False # Already saved above
                 ):
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             else:
                 # Normal text-only chat with Groq
                 for chunk in AIService.chat(
-                    str(conv.id), user_message, explanation_level, user_context, rag_context=rag_context
+                    str(conv.id), user_message, explanation_level, user_context, rag_context=rag_context,
+                    persist_user_message=False # Already saved above
                 ):
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             yield "data: [DONE]\n\n"

@@ -62,9 +62,17 @@ export default function ActiveChat() {
         setConversationId(data.id || paramConversationId);
       } catch (err) {
         if (err?.status === 404) {
-          // If conversation not found on server, reset to a temp ID
-          setConversationId(`temp_${Date.now()}`);
-          setMessages([]);
+          // If conversation not found on server, check if we have it locally.
+          const stored = JSON.parse(localStorage.getItem('conversations') || '[]');
+          const match = stored.find(c => String(c.id) === String(paramConversationId));
+          if (match?.messages?.length) {
+            setMessages(match.messages);
+            setConversationId(`temp_${Date.now()}`); // Degrade to temp so next message re-syncs
+            showToast('Synchronizing history...');
+          } else {
+            setConversationId(`temp_${Date.now()}`);
+            setMessages([]);
+          }
         } else {
           const stored = JSON.parse(localStorage.getItem('conversations') || '[]');
           const match = stored.find(c => String(c.id) === String(paramConversationId));
