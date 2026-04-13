@@ -148,37 +148,36 @@ def send_message(conv_id):
 
     # Attach the user's current weak topics to improve AI personalization.
     # (Computed from SessionAnswer performance, consistent with /api/analytics/weak-areas.)
+    from ..models import SessionAnswer, Question
+    from sqlalchemy import func
+
     try:
-        from ..models import SessionAnswer, Question
-        from sqlalchemy import func
+        rows = db.session.query(
+            Question.subject,
+            Question.topic,
+            func.count(SessionAnswer.id).label('attempts'),
+            func.sum(case((SessionAnswer.is_correct == True, 1), else_=0)).label('correct_attempts')
+        ).join(SessionAnswer, SessionAnswer.question_id == Question.id).filter(
+            SessionAnswer.user_id == uid
+        ).group_by(Question.subject, Question.topic).all()
 
-        try:
-            rows = db.session.query(
-                Question.subject,
-                Question.topic,
-                func.count(SessionAnswer.id).label('attempts'),
-                func.sum(case((SessionAnswer.is_correct == True, 1), else_=0)).label('correct_attempts')
-            ).join(SessionAnswer, SessionAnswer.question_id == Question.id).filter(
-                SessionAnswer.user_id == uid
-            ).group_by(Question.subject, Question.topic).all()
+        weak = []
+        for r in rows:
+            attempts = int(r.attempts or 0)
+            if attempts < 5:
+                continue
+            correct_attempts = int(r.correct_attempts or 0)
+            accuracy = round((correct_attempts / attempts) * 100, 1)
+            if accuracy < 70:
+                weak.append({
+                    'subject': r.subject,
+                    'topic': r.topic,
+                    'accuracy': accuracy,
+                })
 
-            weak = []
-            for r in rows:
-                attempts = int(r.attempts or 0)
-                if attempts < 5:
-                    continue
-                correct_attempts = int(r.correct_attempts or 0)
-                accuracy = round((correct_attempts / attempts) * 100, 1)
-                if accuracy < 70:
-                    weak.append({
-                        'subject': r.subject,
-                        'topic': r.topic,
-                        'accuracy': accuracy,
-                    })
-
-            user_context['weak_areas'] = sorted(weak, key=lambda x: x['accuracy'])[:3]
-        except Exception:
-            user_context['weak_areas'] = []
+        user_context['weak_areas'] = sorted(weak, key=lambda x: x['accuracy'])[:3]
+    except Exception:
+        user_context['weak_areas'] = []
 
     # Save the user's message immediately to ensure persistence if the stream is interrupted.
     user_msg = Message(
