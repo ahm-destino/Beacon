@@ -207,18 +207,19 @@ def send_message(conv_id):
 
     def generate():
         try:
+            if image_data:
                 # Use Gemini for this turn because there's an image
                 safe_image = _strip_base64_prefix(image_data)
                 for chunk in AIService.chat_with_image(
                     str(conv.id), user_message, safe_image, mime_type, explanation_level, user_context,
-                    persist_user_message=False # Already saved above
+                    persist_user_message=False  # Already saved above
                 ):
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             else:
                 # Normal text-only chat with Groq
                 for chunk in AIService.chat(
                     str(conv.id), user_message, explanation_level, user_context, rag_context=rag_context,
-                    persist_user_message=False # Already saved above
+                    persist_user_message=False  # Already saved above
                 ):
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             yield "data: [DONE]\n\n"
