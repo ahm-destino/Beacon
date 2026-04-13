@@ -197,10 +197,10 @@ def send_message(conv_id):
 
     def generate():
         try:
-            if image_data:
                 # Use Gemini for this turn because there's an image
+                safe_image = _strip_base64_prefix(image_data)
                 for chunk in AIService.chat_with_image(
-                    str(conv.id), user_message, image_data, mime_type, explanation_level, user_context
+                    str(conv.id), user_message, safe_image, mime_type, explanation_level, user_context
                 ):
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             else:

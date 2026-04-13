@@ -56,9 +56,8 @@ class AIService:
     _groq_model_lock = threading.Lock()
 
     GEMINI_DEFAULT_MODELS = [
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-exp',
     ]
 
     GEMINI_KEY_COOLDOWN_SECS = int(os.getenv('GEMINI_KEY_COOLDOWN_SECS', '30'))
@@ -518,7 +517,7 @@ class AIService:
                 resp = requests.post(url, headers=headers, json=payload,
                                      stream=True, timeout=cls.GEMINI_TIMEOUT_SECS)
                 if resp.status_code != 200:
-                    err = resp.text.lower()
+                    print(f"DEBUG: Gemini Vision API error {resp.status_code}: {resp.text}")
                     if resp.status_code in (429, 503) or 'resource_exhausted' in err:
                         cls._cooldown_gemini_key(key)
                         cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)

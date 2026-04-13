@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Brain, BookOpen, RotateCcw, ArrowRight, MessageSquare, Plus, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
+import QuestionTextFormatter from '../shared/QuestionTextFormatter';
 import FormattedExplanation, { buildCopyText } from '../shared/FormattedExplanation';
 
 export default function ReviewWrongAnswers() {
@@ -122,9 +123,9 @@ export default function ReviewWrongAnswers() {
                   </div>
                 </div>
 
-                <p className="font-[var(--font-syne)] font-bold text-[#0C4A6E] dark:text-[#F0F9FF] leading-relaxed mb-4">
-                  {question.text}
-                </p>
+                <div className="mb-4">
+                  <QuestionTextFormatter text={question.text} imageUrl={question.image_url} />
+                </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100/30 dark:border-emerald-800/20">

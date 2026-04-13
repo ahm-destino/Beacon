@@ -60,12 +60,18 @@ export default function ActiveChat() {
         }));
         setMessages(backendMessages);
         setConversationId(data.id || paramConversationId);
-      } catch (_) {
-        const stored = JSON.parse(localStorage.getItem('conversations') || '[]');
-        const match = stored.find(c => String(c.id) === String(paramConversationId));
-        if (match?.messages?.length) {
-          setMessages(match.messages);
-          setConversationId(match.id);
+      } catch (err) {
+        if (err?.status === 404) {
+          // If conversation not found on server, reset to a temp ID
+          setConversationId(`temp_${Date.now()}`);
+          setMessages([]);
+        } else {
+          const stored = JSON.parse(localStorage.getItem('conversations') || '[]');
+          const match = stored.find(c => String(c.id) === String(paramConversationId));
+          if (match?.messages?.length) {
+            setMessages(match.messages);
+            setConversationId(match.id);
+          }
         }
       }
     })();
@@ -200,13 +206,22 @@ export default function ActiveChat() {
         }
       );
     } catch (e) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === streamingAiId
-            ? { ...m, text: e?.error || 'AI response failed. Please try again.' }
-            : m
-        )
-      );
+      if (e?.status === 404) {
+        // Handle scenario where POST /messages returns 404
+        setConversationId(`temp_${Date.now()}`);
+        setMessages(prev => prev.filter(msg => msg.id !== streamingAiId));
+        showToast('Session expired. Starting fresh turn...');
+        // Optionally retry handleSend with temp ID:
+        // handleSend(text, silent, overrideImage, overrideMime);
+      } else {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingAiId
+              ? { ...m, text: e?.error || 'AI response failed. Please try again.' }
+              : m
+          )
+        );
+      }
       setIsTyping(false);
     }
   };

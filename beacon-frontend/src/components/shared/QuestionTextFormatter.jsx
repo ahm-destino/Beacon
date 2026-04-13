@@ -127,7 +127,7 @@ const CollapsibleSection = ({ title, icon: Icon, content, defaultOpen = false, c
   );
 };
 
-export default function QuestionTextFormatter({ text }) {
+export default function QuestionTextFormatter({ text, imageUrl }) {
   if (!text) return null;
 
   let instruction = null;
@@ -204,6 +204,19 @@ export default function QuestionTextFormatter({ text }) {
 
   return (
     <div className="w-full">
+      {imageUrl && (
+        <div className="w-full mb-6 rounded-2xl overflow-hidden border-2 border-sky-100 dark:border-sky-900/40 shadow-sm relative bg-white flex justify-center p-2">
+          <img 
+            src={imageUrl} 
+            alt="Question figure" 
+            className="w-full h-auto object-contain max-h-64" 
+            onError={(e) => {
+              e.target.style.display = 'none';
+              console.warn('Question image failed to load');
+            }}
+          />
+        </div>
+      )}
       <CollapsibleSection 
         title="Instruction" 
         icon={AlertCircle} 

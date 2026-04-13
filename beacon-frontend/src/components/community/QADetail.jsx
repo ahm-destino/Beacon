@@ -5,6 +5,7 @@ import { ThumbsUp, MessageSquare, Share2, MoreHorizontal, Award } from 'lucide-r
 import BookmarkButton from '../shared/BookmarkButton';
 import { useBookmarkIds } from '../../utils/bookmarks';
 import { Community } from '../../services/api';
+import { getInitials } from '../../utils/initials';
 
 export default function QADetail() {
   const navigate = useNavigate();
@@ -24,13 +25,7 @@ export default function QADetail() {
   const [answers, setAnswers] = useState(question?.answers || fallbackAnswers);
   const [bestAnswerId, setBestAnswerId] = useState('a1');
 
-  const initials = (name) => {
-    if (!name) return 'ST';
-    const parts = name.trim().split(' ').filter(Boolean);
-    const first = parts[0]?.[0] || '';
-    const second = parts[1]?.[0] || '';
-    return `${first}${second}`.toUpperCase() || 'ST';
-  };
+
 
   const mapAnswer = (a) => ({
     id: a.id,
@@ -38,7 +33,7 @@ export default function QADetail() {
     author: {
       id: a.user_id,
       name: a.author_name || 'Student',
-      avatar: initials(a.author_name || 'Student'),
+      avatar: getInitials(a.author_name || 'Student'),
     },
     votes: a.upvotes || 0,
     createdAt: a.created_at,
@@ -60,6 +55,7 @@ export default function QADetail() {
       answers: mappedAnswers,
       bestAnswerId: q.best_answer_id || null,
       is_resolved: q.is_resolved,
+      imageUrl: q.image_url,
     };
   };
 
@@ -68,7 +64,10 @@ export default function QADetail() {
       setIsLoading(true);
       const res = await Community.getQuestion(id);
       if (res?.data) {
-        setQuestionData(mapQuestion(res.data));
+        const mapped = mapQuestion(res.data);
+        setQuestionData(mapped);
+        setAnswers(mapped.answers || []);
+        if (mapped.bestAnswerId) setBestAnswerId(mapped.bestAnswerId);
       }
     } catch (err) {
       console.error('Failed to load question', err);
@@ -123,7 +122,7 @@ export default function QADetail() {
   const questionBody = displayQuestion.body || '';
   const authorName = displayQuestion.author_name || 'Student';
   const authorId = displayQuestion.user_id;
-  const authorInitials = initials(authorName);
+  const authorInitials = getInitials(authorName);
   const postedAt = displayQuestion.created_at ? new Date(displayQuestion.created_at).toLocaleDateString() : '';
 
   if (isLoading && !questionData) {
@@ -144,7 +143,11 @@ export default function QADetail() {
       <div className="bg-white dark:bg-[#0D1525] p-5 shadow-sm border-b border-sky-100 dark:border-sky-900/20">
         <div className="flex items-center gap-3 mb-4">
           <div
-            onClick={() => navigate(`/community/students/${authorId}`, { state: { student: { id: authorId, name: authorName, avatar: authorInitials } } })}
+            onClick={() => {
+              if (authorId) {
+                navigate(`/community/students/${authorId}`, { state: { student: { id: authorId, name: authorName, avatar: authorInitials } } });
+              }
+            }}
             className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-md cursor-pointer"
           >
             {authorInitials}
@@ -173,6 +176,12 @@ export default function QADetail() {
           </div>
         )}
         
+        {displayQuestion.imageUrl && (
+          <div className="w-full mb-4 rounded-2xl overflow-hidden border border-sky-100 dark:border-sky-900/20 shadow-sm bg-white dark:bg-[#080C14] flex justify-center p-2">
+            <img src={displayQuestion.imageUrl} alt="Question figure" className="w-full h-auto object-contain max-h-72" />
+          </div>
+        )}
+
         <p className="text-sm text-[#0C4A6E]/80 dark:text-[#F0F9FF]/80 leading-relaxed mb-4">
           {questionBody}
         </p>
@@ -208,7 +217,11 @@ export default function QADetail() {
               )}
               <div className="flex items-center gap-3 mb-3">
                 <div
-                  onClick={() => navigate(`/community/students/${answer.author.id}`, { state: { student: answer.author } })}
+                  onClick={() => {
+                    if (answer.author.id) {
+                      navigate(`/community/students/${answer.author.id}`, { state: { student: answer.author } });
+                    }
+                  }}
                   className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer"
                 >
                   {answer.author.avatar}

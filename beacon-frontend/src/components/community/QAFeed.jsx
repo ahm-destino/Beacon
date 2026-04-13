@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getInitials } from '../../utils/initials';
 import SubScreenHeader from '../shared/SubScreenHeader';
 import { MessageCircle, ThumbsUp, Eye, Plus } from 'lucide-react';
 import BookmarkButton from '../shared/BookmarkButton';
@@ -52,13 +53,7 @@ export default function QAFeed() {
 
   const timeAgo = (iso) => formatTimeAgo(iso);
 
-  const initials = (name) => {
-    if (!name) return 'ST';
-    const parts = name.trim().split(' ').filter(Boolean);
-    const first = parts[0]?.[0] || '';
-    const second = parts[1]?.[0] || '';
-    return `${first}${second}`.toUpperCase() || 'ST';
-  };
+
 
   const mapQuestion = (q) => {
     const status = q?.is_resolved || (q?.answer_count || 0) > 0 ? 'Answered' : 'Open';
@@ -71,8 +66,9 @@ export default function QAFeed() {
       author: {
         id: q.user_id || 'user',
         name: q.author_name || 'Student',
-        avatar: initials(q.author_name || 'Student'),
+        avatar: getInitials(q.author_name || 'Student'),
       },
+      imageUrl: q.image_url,
       views: q.views || 0,
       answers: q.answer_count || 0,
       likes: q.likes || 0,
@@ -178,9 +174,16 @@ export default function QAFeed() {
               {q.text}
             </h3>
 
-            <div className="flex items-center gap-2 mt-4">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">{q.author.avatar}</div>
-              <span className="font-[var(--font-jakarta)] text-xs font-semibold text-[#0369A1] dark:text-[#7DD3FC]">{q.author.name}</span>
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">{q.author.avatar}</div>
+                <span className="font-[var(--font-jakarta)] text-xs font-semibold text-[#0369A1] dark:text-[#7DD3FC]">{q.author.name}</span>
+              </div>
+              {q.imageUrl && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/30 text-[10px] font-bold text-sky-600 dark:text-sky-400">
+                  📷 Image Attached
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 mt-3 pt-3 border-t border-sky-50 dark:border-sky-900/20">
