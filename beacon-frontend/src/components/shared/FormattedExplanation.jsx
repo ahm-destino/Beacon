@@ -13,6 +13,14 @@ const normalizeText = (value) => {
     .replace(/([^\n])\s+(Step\s+\d+[:.)-])/gi, '$1\n$2')
     .replace(/([^\n])\s+(Answer\s*:)/gi, '$1\n$2')
     .replace(/\n{3,}/g, '\n\n')
+    // Special marker for math-like lines to prevent joining
+    .split('\n').map(line => {
+      // If line contains symbols like =, ^, +, -, *, /, _, (, ) and is short, mark it as hard-line
+      if (line.trim().length < 50 && /[\^=\+\-\*\/\_]/.test(line)) {
+        return line.trim() + ' [MATH_BREAK]';
+      }
+      return line.trim();
+    }).join('\n')
     .trim();
 };
 
@@ -42,9 +50,14 @@ const parseBlocks = (input) => {
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    const content = paragraph.join(' ').trim();
     if (content) {
-      blocks.push({ type: 'paragraph', content });
+      // Remote math break markers and preserve line breaks if they existed
+      const cleaned = content.replace(/\s*\[MATH_BREAK\]\s*/g, '\n').trim();
+      blocks.push({ 
+        type: 'paragraph', 
+        content: cleaned,
+        isMath: content.includes('[MATH_BREAK]')
+      });
     }
     paragraph = [];
   };
@@ -99,6 +112,22 @@ const parseBlocks = (input) => {
       continue;
     }
 
+    const h3Match = line.match(/^##\s+(.*)$/);
+    if (h3Match) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: 'h3', content: h3Match[1].trim() });
+      continue;
+    }
+
+    const h4Match = line.match(/^###\s+(.*)$/);
+    if (h4Match) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: 'h4', content: h4Match[1].trim() });
+      continue;
+    }
+
     flushList();
     paragraph.push(line);
   }
@@ -143,15 +172,29 @@ export default function FormattedExplanation({ text }) {
   const blocks = useMemo(() => parseBlocks(text), [text]);
 
   if (!blocks.length) {
-    return <span>{text}</span>;
+    return <span className="whitespace-pre-wrap">{text}</span>;
   }
 
   return (
     <div className="space-y-3">
       {blocks.map((block, idx) => {
+        if (block.type === 'h3') {
+          return (
+            <h3 key={`h3-${idx}`} className="font-[var(--font-syne)] font-bold text-base text-[#0369A1] dark:text-[#7DD3FC] mt-6 mb-2 tracking-tight">
+              {renderInline(block.content)}
+            </h3>
+          );
+        }
+        if (block.type === 'h4') {
+          return (
+            <h4 key={`h4-${idx}`} className="font-[var(--font-syne)] font-bold text-sm text-[#0C4A6E] dark:text-[#F0F9FF] mt-4 mb-2">
+              {renderInline(block.content)}
+            </h4>
+          );
+        }
         if (block.type === 'paragraph') {
           return (
-            <p key={`p-${idx}`} className="leading-relaxed">
+            <p key={`p-${idx}`} className={`leading-relaxed ${block.isMath ? 'whitespace-pre-wrap font-medium bg-sky-50/30 dark:bg-sky-900/10 p-2 rounded-lg' : ''}`}>
               {renderInline(block.content)}
             </p>
           );
