@@ -56,8 +56,9 @@ class AIService:
     _groq_model_lock = threading.Lock()
 
     GEMINI_DEFAULT_MODELS = [
+        'gemini-pro-latest',
+        'gemini-1.5-pro',
         'gemini-1.5-flash',
-        'gemini-2.0-flash-exp',
     ]
 
     GEMINI_KEY_COOLDOWN_SECS = int(os.getenv('GEMINI_KEY_COOLDOWN_SECS', '30'))
@@ -393,25 +394,69 @@ class AIService:
             Message.created_at
         ).all()
 
-        messages = [{'role': m.role, 'content': m.content} for m in history[-20:]]
-        messages.append({'role': 'user', 'content': user_message})
+        # Build Gemini conversation history
+        contents = []
+        for m in history[-18:]:
+            role = 'model' if m.role == 'assistant' else 'user'
+            contents.append({'role': role, 'parts': [{'text': m.content}]})
+        
+        # Current user message
+        contents.append({'role': 'user', 'parts': [{'text': user_message}]})
 
         # Pass rag_context into the system prompt builder
         system_prompt = cls.build_system_prompt(explanation_level, user_context, rag_context=rag_context)
 
+        # Try each Gemini key/model
+        keys = cls._get_gemini_keys()
+        models = cls._get_gemini_models()
+        
         full_response = ''
-        stream = cls.execute_groq_with_fallback(
-            messages=[{'role': 'system', 'content': system_prompt}] + messages,
-            stream=True,
-            max_tokens=2000,
-            temperature=0.7,
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta if chunk.choices else None
-            text = getattr(delta, 'content', None)
-            if text:
-                full_response += text
-                yield text
+        for attempt in range(len(keys) * max(1, len(models))):
+            key = cls._next_gemini_key(keys)
+            model = cls._next_gemini_model(models)
+            if not key or not model: break
+            if cls._is_gemini_key_cooled(key) or cls._is_gemini_model_cooled(model): continue
+
+            url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse'
+            payload = {
+                'contents': [
+                    {'role': 'user', 'parts': [{'text': f'[System]: {system_prompt}'}]},
+                    {'role': 'model', 'parts': [{'text': 'Understood. I will provide accurate, well-structured tutoring.'}]},
+                    *contents
+                ],
+                'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2000},
+            }
+            headers = {'x-goog-api-key': key, 'Content-Type': 'application/json'}
+
+            try:
+                resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=cls.GEMINI_TIMEOUT_SECS)
+                if resp.status_code != 200:
+                    if resp.status_code in (429, 503):
+                        cls._cooldown_gemini_key(key)
+                        cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)
+                        continue
+                    break
+
+                for raw_line in resp.iter_lines():
+                    if not raw_line: continue
+                    line = raw_line.decode('utf-8') if isinstance(raw_line, bytes) else raw_line
+                    if not line.startswith('data: '): continue
+                    json_str = line[6:].strip()
+                    if not json_str or json_str == '[DONE]': continue
+                    try:
+                        chunk_data = json.loads(json_str)
+                        candidates = chunk_data.get('candidates', [])
+                        for cand in candidates:
+                            for part in cand.get('content', {}).get('parts', []):
+                                chunk_text = part.get('text', '')
+                                if chunk_text:
+                                    full_response += chunk_text
+                                    yield chunk_text
+                    except Exception: continue
+                break # Success
+            except Exception:
+                cls._cooldown_gemini_key(key)
+                continue
 
         # Persist messages
         if persist_user_message:
@@ -736,6 +781,7 @@ ADAPTIVE FORMATTING RULES:
 4. **Lists**: Use bullet points ( - ) for definitions, notation, and laws to make them easy to scan.
 5. **Readability**: Use **bold** for definitions. Keep paragraphs concise (max 3-4 sentences).
 6. **Interaction**: End with a 'Check Question' (e.g., ### 📝 Check Question) or a suggested next step.
+7. **Accuracy**: Double-check every mathematical calculation internally before outputting the final result. If you find an error in your intermediate steps, correct it silently and only present the verified final calculation.
 
 VIBE: You are the "Senior Bro/Sis" — academic but relatable, warm, and highly organized. NEVER give wall-of-text responses.
 """

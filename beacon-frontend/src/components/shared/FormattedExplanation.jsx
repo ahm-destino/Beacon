@@ -50,6 +50,7 @@ const parseBlocks = (input) => {
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
+    const content = paragraph.join(' ').trim();
     if (content) {
       // Remote math break markers and preserve line breaks if they existed
       const cleaned = content.replace(/\s*\[MATH_BREAK\]\s*/g, '\n').trim();
