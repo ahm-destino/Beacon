@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import random
+import re
 from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import PracticeSession, SessionAnswer, Question, Bookmark, User, QuestionOptionExplanation, QuestionAnswerVerification
@@ -46,12 +47,12 @@ def _fallback_option_explanation(question: Question, selected_option: str) -> st
         base = 'Match the option with the core concept and eliminate contradictions.'
     if selected_option == correct:
         return (
-            f"Step 1: Your choice matches the concept tested in the question.\n"
+            f"Step 1: Your choice matches the key idea tested in the question.\n"
             f"Step 2: {base}\n"
             f"Answer: Option {correct} — {correct_text}"
         )
     return (
-        f"Step 1: The selected option does not satisfy the concept tested.\n"
+        f"Step 1: Your choice misses the key idea being tested.\n"
         f"Step 2: {base}\n"
         f"Answer: Option {correct} — {correct_text}"
     )
@@ -62,6 +63,90 @@ def _strip_answer_lines(text: str) -> str:
         return ''
     lines = [line for line in text.splitlines() if not line.strip().lower().startswith('answer:')]
     return '\n'.join(lines).rstrip()
+
+
+_SUBSCRIPT_DIGITS = '\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089'
+_SUBSCRIPT_MAP = str.maketrans({
+    '\u2080': '0',
+    '\u2081': '1',
+    '\u2082': '2',
+    '\u2083': '3',
+    '\u2084': '4',
+    '\u2085': '5',
+    '\u2086': '6',
+    '\u2087': '7',
+    '\u2088': '8',
+    '\u2089': '9',
+})
+
+
+def _replace_subscript_bases(text: str) -> str:
+    if not text:
+        return ''
+    pattern = r'(\d+)([' + _SUBSCRIPT_DIGITS + r']+)'
+
+    def repl(match):
+        base = match.group(2).translate(_SUBSCRIPT_MAP)
+        return f"{match.group(1)} (base {base})"
+
+    return re.sub(pattern, repl, text)
+
+
+def _clean_explanation_text(text: str) -> str:
+    if not text:
+        return ''
+    cleaned = text.replace('\r\n', '\n').replace('\r', '\n')
+    cleaned = cleaned.replace('[MATH_BREAK]', ' ')
+    cleaned = re.sub(r'^\s*(explanation|copy steps)\s*$', '', cleaned, flags=re.IGNORECASE | re.MULTILINE)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned.strip()
+
+
+def _extract_answer_line(text: str, correct_option: str):
+    if not text or not correct_option:
+        return None
+    needle = f"option {correct_option}".lower()
+    for line in text.splitlines():
+        if line.strip().lower().startswith('answer:') and needle in line.lower():
+            return line.strip()
+    return None
+
+
+def _trim_step(text: str, max_len: int = 180) -> str:
+    if not text:
+        return ''
+    if len(text) <= max_len:
+        return text
+    shortened = text[:max_len].rsplit(' ', 1)[0].rstrip()
+    return shortened + '...'
+
+
+def _format_explanation(text: str, answer_line: str, correct_option: str):
+    cleaned = _clean_explanation_text(text)
+    cleaned = _replace_subscript_bases(cleaned)
+
+    extracted_answer = _extract_answer_line(cleaned, correct_option)
+    cleaned = _strip_answer_lines(cleaned)
+    if extracted_answer:
+        answer_line = extracted_answer
+
+    if not cleaned:
+        return answer_line or ''
+
+    if re.search(r'^\s*step\s*1\b', cleaned, flags=re.IGNORECASE | re.MULTILINE):
+        body = cleaned
+    else:
+        parts = re.split(r'(?:\n+|(?<=[.!?])\s+)', cleaned)
+        parts = [p.strip() for p in parts if p.strip()]
+        if not parts:
+            parts = [cleaned.strip()]
+        steps = parts[:3]
+        steps = [_trim_step(step) for step in steps]
+        body = '\n'.join(f"Step {idx + 1}: {step}" for idx, step in enumerate(steps))
+
+    if answer_line:
+        return f"{body}\n{answer_line}".strip()
+    return body
 
 
 def _fetch_valid_questions(query, target_count, max_rounds=3):
@@ -718,6 +803,13 @@ def get_option_explanation(question_id):
                     'flagged_reason': 'ai_discrepancy'
                 })
 
+    correct_option = question.correct_answer
+    answer_line = build_answer_line(question)
+    if answer_line:
+        answer_line = _replace_subscript_bases(answer_line)
+    else:
+        answer_line = 'Answer: Option unavailable due to a data issue.'
+
     options_hash = build_options_hash(question)
 
     existing = QuestionOptionExplanation.query.filter_by(
@@ -730,23 +822,23 @@ def get_option_explanation(question_id):
         existing.use_count = (existing.use_count or 0) + 1
         existing.last_used_at = datetime.utcnow()
         db.session.commit()
+        formatted = _format_explanation(existing.explanation_text, answer_line, correct_option)
         return success_response({
-            'explanation': existing.explanation_text,
+            'explanation': formatted,
             'cached': True,
             'selected_option': selected_option,
             'correct_option': question.correct_answer,
         })
 
     selected_text = getattr(question, f'option_{selected_option.lower()}', '') or ''
-    correct_option = question.correct_answer
     correct_text = getattr(question, f'option_{correct_option.lower()}', '') or ''
 
     system_prompt = (
         'You are Beacon Expert Tutor. Every answer provided in the prompt is absolute truth. '
-        'Do not re-calculate or attempt to solve the problem yourself. Use the provided correct option as your base fact.'
+        'Keep explanations short, exam-focused, and easy to scan.'
     )
 
-    prompt = f"""Explain the student's selected option for this question.
+    prompt = f"""Explain the student's selected option for this question in 2-3 short steps.
 
 Question: {question.question_text}
 Options:
@@ -761,13 +853,17 @@ Correct answer (THIS IS ABSOLUTE FACT): {correct_option}) {correct_text}
 Rules:
 - NEVER contradict the 'Correct answer' provided above.
 - If the student selected the wrong option, explain the specific logic error and why {correct_option} is the right choice.
-- If the question contains numbers/math, do NOT attempt to re-calculate them. Use the values as given.
-- Use 2-4 steps. 
+- If the question contains numbers/math, do not invent new values; use the given ones only.
+- Use 2-3 steps, each one sentence.
+- Use plain text only (no headings, no markdown).
+- If base notation appears, write it like "1101 (base 3)" (no subscripts).
+- Do not include words like "Explanation" or "Copy steps".
+- Do not include placeholders like [MATH_BREAK].
 - FORMAT EXACTLY AS:
 Step 1: ...
 Step 2: ...
 Step 3: ...
-Answer: Option {correct_option} — <short reason>.
+Answer: Option {correct_option} — <short reason, max 8 words>.
 """
 
     explanation_text = None
@@ -790,16 +886,26 @@ Answer: Option {correct_option} — <short reason>.
         explanation_text = None
 
     if not explanation_text:
+        try:
+            response = AIService.execute_groq_with_fallback(
+                messages=[
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': prompt},
+                ],
+                stream=False,
+                max_tokens=500,
+                temperature=0.2,
+            )
+            if response and getattr(response, 'choices', None):
+                explanation_text = response.choices[0].message.content.strip()
+                model_name = getattr(response, 'model', None) or model_name
+        except Exception as e:
+            print(f"Groq Explanation Error: {e}")
+
+    if not explanation_text:
         explanation_text = _fallback_option_explanation(question, selected_option)
 
-    answer_line = build_answer_line(question)
-    if not answer_line:
-        answer_line = 'Answer: Option unavailable due to a data issue.'
-    explanation_text = _strip_answer_lines(explanation_text)
-    if explanation_text:
-        explanation_text = explanation_text + f"\n{answer_line}"
-    else:
-        explanation_text = answer_line
+    explanation_text = _format_explanation(explanation_text, answer_line, correct_option)
 
     record = QuestionOptionExplanation(
         question_id=question.id,
