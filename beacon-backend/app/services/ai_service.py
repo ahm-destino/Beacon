@@ -431,10 +431,16 @@ class AIService:
             try:
                 resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=cls.GEMINI_TIMEOUT_SECS)
                 if resp.status_code != 200:
-                    if resp.status_code in (429, 503):
+                    err_text = (resp.text or '').lower()
+                    if resp.status_code in (429, 503) or 'resource_exhausted' in err_text:
                         cls._cooldown_gemini_key(key)
                         cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)
                         continue
+                    if resp.status_code == 404 or 'not found' in err_text:
+                        cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS)
+                        continue
+                    if resp.status_code in (401, 403):
+                        raise Exception(f"Gemini auth error: {resp.text}")
                     break
 
                 for raw_line in resp.iter_lines():
@@ -457,6 +463,28 @@ class AIService:
             except Exception:
                 cls._cooldown_gemini_key(key)
                 continue
+
+        if not full_response:
+            # Gemini failed or is unavailable — fall back to Groq.
+            groq_messages = []
+            if system_prompt:
+                groq_messages.append({'role': 'system', 'content': system_prompt})
+            for m in history[-18:]:
+                groq_messages.append({'role': m.role, 'content': m.content})
+            groq_messages.append({'role': 'user', 'content': user_message})
+
+            stream = cls.execute_groq_with_fallback(
+                messages=groq_messages,
+                stream=True,
+                max_tokens=2000,
+                temperature=0.7,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta if getattr(chunk, 'choices', None) else None
+                text = getattr(delta, 'content', None)
+                if text:
+                    full_response += text
+                    yield text
 
         # Persist messages
         if persist_user_message:
@@ -567,13 +595,16 @@ class AIService:
                                      stream=True, timeout=cls.GEMINI_TIMEOUT_SECS)
                 if resp.status_code != 200:
                     print(f"DEBUG: Gemini Vision API error {resp.status_code}: {resp.text}")
-                    if resp.status_code in (429, 503) or 'resource_exhausted' in err:
+                    err_text = (resp.text or '').lower()
+                    if resp.status_code in (429, 503) or 'resource_exhausted' in err_text:
                         cls._cooldown_gemini_key(key)
                         cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_SECS)
                         continue
-                    if resp.status_code == 404 or 'not found' in err:
+                    if resp.status_code == 404 or 'not found' in err_text:
                         cls._cooldown_gemini_model(model, cls.GEMINI_MODEL_COOLDOWN_NOT_FOUND_SECS)
                         continue
+                    if resp.status_code in (401, 403):
+                        raise Exception(f"Gemini auth error: {resp.text}")
                     break  # Unrecoverable error
 
                 # Stream SSE lines
