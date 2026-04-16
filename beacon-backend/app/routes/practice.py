@@ -282,12 +282,18 @@ def create_jamb_full_session():
     else:
         selected = user.subjects or []
 
-    # We expect backend onboarding to store: ['English', <sub1>, <sub2>, <sub3>]
-    # Or frontend to send exactly that.
-    other_subjects = [s for s in selected if s and s != 'English']
-    if 'English' not in selected or len(other_subjects) != 3:
+    # Normalize input subjects for comparison
+    selected = [s.strip() for s in selected if s and isinstance(s, str)]
+    
+    english_aliases = {'english', 'use of english', 'english language'}
+    other_subjects = [s for s in selected if s.lower() not in english_aliases]
+    has_english = any(s.lower() in english_aliases for s in selected)
+
+    if not has_english or len(other_subjects) != 3:
+        # LOG FOR DEBUGGING
+        print(f"DEBUG: JAMB Simulation failed validation. Selected: {selected}, has_english: {has_english}, other_subjects_count: {len(other_subjects)}")
         return error_response(
-            'JAMB full simulation requires English + exactly 3 subjects',
+            f"JAMB full simulation requires English + exactly 3 subjects. (Received: {', '.join(selected)})",
             422,
         )
 

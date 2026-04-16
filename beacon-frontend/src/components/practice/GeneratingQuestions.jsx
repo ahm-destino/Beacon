@@ -46,9 +46,10 @@ export default function GeneratingQuestions() {
       let res;
       if (isFullJamb) {
         setStage(1);
+        const subjectsToSend = state.subjects || state.selectedSubjects || [];
         // Specialized endpoint for multi-subject JAMB simulation
         res = await Practice.createJambFullSession({
-          subjects: state.subjects || state.selectedSubjects || []
+          subjects: subjectsToSend
         });
       } else {
         const difficultyMap = { Basic: 'easy', Normal: 'medium', Deep: 'hard' };

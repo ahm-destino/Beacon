@@ -160,7 +160,9 @@ export const buildCopyText = (input) => {
   });
 
   if (steps.length === 0) {
-    const normalized = normalizeText(input);
+    const normalized = normalizeText(input)
+      .replace(/\s*\[MATH_BREAK\]\s*/g, '\n')
+      .trim();
     return { text: normalized || '', hasSteps: false };
   }
 
